@@ -1,0 +1,7 @@
+{
+  "name": "OneMedia — Legal Kino Portali",
+  "description": "OneMedia — O'zbekistondagi birinchi rasmiy kino portali. Sevimli film va seriallaringizni 4K sifatda, istalgan joyda va vaqtda tomosha qiling.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

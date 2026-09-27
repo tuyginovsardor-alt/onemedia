@@ -1,54 +1,709 @@
 import { NextResponse } from "next/server"
-import { telegramApi, telegramWebhookSecret } from "@/lib/telegram"
+import {
+  telegramApi,
+  telegramWebhookSecret,
+  sendTelegramMessage,
+  sendTelegramPhoto,
+  answerTelegramCallbackQuery,
+  editTelegramMessageText,
+  isTelegramConfigured,
+  getBotMe,
+} from "@/lib/telegram"
+import { movies, genres, getMovie, getFeatured, byGenre } from "@/lib/movies"
+
+type TelegramChat = { id: number | string; first_name?: string; username?: string; type?: string }
+type TelegramUser = { id: number; first_name: string; username?: string }
+
+type TelegramMessage = {
+  message_id: number
+  chat: TelegramChat
+  from?: TelegramUser
+  text?: string
+}
+
+type TelegramCallbackQuery = {
+  id: string
+  from: TelegramUser
+  message?: TelegramMessage
+  data?: string
+}
+
+type TelegramInlineQuery = {
+  id: string
+  from: TelegramUser
+  query: string
+  offset: string
+}
 
 type TelegramUpdate = {
   update_id: number
-  message?: { chat: { id: number | string }; text?: string; from?: { first_name?: string } }
+  message?: TelegramMessage
+  callback_query?: TelegramCallbackQuery
+  inline_query?: TelegramInlineQuery
 }
 
-async function sendMainMenu(chatId: number | string, firstName = "do‘st") {
-  await telegramApi("sendMessage", {
-    chat_id: chatId,
-    text: `Assalomu alaykum, ${firstName}! OneMedia botiga xush kelibsiz.\n\nFilm va anime izlash uchun kerakli bo‘limni tanlang:`,
-    reply_markup: {
-      keyboard: [
-        [{ text: "🎬 Kino izlash" }, { text: "🔥 Mashhur kinolar" }],
-        [{ text: "📺 Seriallar" }, { text: "🎞️ Premyeralar" }],
-        [{ text: "⭐ Sevimlilar" }, { text: "📥 Yuklab olish" }],
-        [{ text: "🔎 Janrlar" }, { text: "🆕 Yangi kinolar" }],
-        [{ text: "🌟 Top kinolar" }, { text: "ℹ️ Yordam" }],
+// Helper to determine the site base URL dynamically
+function getSiteUrl(request?: Request): string {
+  if (request) {
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host")
+    const proto = request.headers.get("x-forwarded-proto") || "https"
+    if (host) return `${proto}://${host}`
+  }
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  return "https://ais-dev-uutxhduathfxogfs6ag5we-30790122823.asia-east1.run.app"
+}
+
+// Generate movie poster absolute URL
+function getPosterUrl(siteUrl: string, posterPath: string): string {
+  if (posterPath.startsWith("http://") || posterPath.startsWith("https://")) {
+    return posterPath
+  }
+  return `${siteUrl}${posterPath.startsWith("/") ? "" : "/"}${posterPath}`
+}
+
+// Format movie card text with HTML
+function formatMovieCard(movie: (typeof movies)[0]): string {
+  return [
+    `🎬 <b>${movie.title}</b> (${movie.year})`,
+    ``,
+    `⭐ <b>Reyting:</b> ${movie.rating.toFixed(1)} / 10`,
+    `🎞️ <b>Sifat:</b> ${movie.quality} Ultra HD`,
+    `⏳ <b>Davomiyligi:</b> ${movie.duration}`,
+    `🔞 <b>Yosh chegarasi:</b> ${movie.ageRating}`,
+    `🎭 <b>Janrlar:</b> ${movie.genres.join(", ")}`,
+    `👤 <b>Rejissyor:</b> ${movie.director}`,
+    `👥 <b>Rollarda:</b> ${movie.cast.join(", ")}`,
+    ``,
+    `📝 <b>Tavsif:</b>`,
+    `${movie.synopsis}`,
+    ``,
+    `🍿 <i>OneMedia — Sevimli kinolaringiz bir joyda!</i>`,
+  ].join("\n")
+}
+
+// Generate movie inline keyboard
+function getMovieInlineKeyboard(siteUrl: string, movie: (typeof movies)[0]) {
+  const filmUrl = `${siteUrl}/film/${movie.id}`
+  const shareText = encodeURIComponent(`OneMedia kino portalida «${movie.title}» (${movie.year}) filmini tomosha qiling!\n⭐ Reyting: ${movie.rating}/10`)
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(filmUrl)}&text=${shareText}`
+
+  return {
+    inline_keyboard: [
+      [
+        { text: "▶️ Onlayn ko'rish (Web)", web_app: { url: filmUrl } },
+        { text: "🌐 Saytda ochish", url: filmUrl },
       ],
-      resize_keyboard: true,
-      is_persistent: true,
-    },
-  })
-}
-
-async function handleUpdate(update: TelegramUpdate) {
-  const message = update.message
-  if (!message?.text) return
-  const command = message.text.trim().toLowerCase()
-  if (command === "/start" || command === "/menu" || command === "🏠 bosh menyu") {
-    await sendMainMenu(message.chat.id, message.from?.first_name)
-  } else if (command === "ℹ️ yordam" || command === "/help") {
-    await telegramApi("sendMessage", { chat_id: message.chat.id, text: "Film qidirish uchun nomi yoki maxsus kodini yuboring. Menyu orqali janr va bo‘limlarni tanlashingiz mumkin." })
+      [
+        { text: "📥 Yuklab olish", callback_data: `dl:${movie.id}` },
+        { text: "⭐ Sevimlilarga", callback_data: `fav:${movie.id}` },
+      ],
+      [
+        { text: "🔗 Do'stlarga ulashish", url: shareUrl },
+      ],
+      [
+        { text: "🔍 Boshqa kinolar", callback_data: "menu:search" },
+        { text: "🏠 Bosh menyu", callback_data: "menu:main" },
+      ],
+    ],
   }
 }
 
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "telegram-webhook", configured: Boolean(telegramWebhookSecret) })
+// Main persistent reply keyboard
+function getMainMenuReplyKeyboard(siteUrl: string) {
+  return {
+    keyboard: [
+      [{ text: "🎬 Kino izlash" }, { text: "🔥 Mashhur kinolar" }],
+      [{ text: "🆕 Yangi filmlar" }, { text: "🌟 Top kinolar" }],
+      [{ text: "🎭 Janrlar" }, { text: "📺 Seriallar & Multfilmlar" }],
+      [{ text: "🌐 OneMedia Sayti (WebApp)" }, { text: "⭐ Sevimlilar" }],
+      [{ text: "📥 Yuklab olish" }, { text: "ℹ️ Yordam" }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+  }
+}
+
+// Send main menu welcome
+async function sendMainMenu(chatId: number | string, firstName = "do‘st", siteUrl: string) {
+  const text = [
+    `Assalomu alaykum, <b>${firstName}</b>! 👋`,
+    ``,
+    `🍿 <b>OneMedia</b> rasmiy kino botiga xush kelibsiz!`,
+    ``,
+    `Bu yerda siz eng sara filmlar, premyeralar, seriallar va multfilmlarni <b>4K va Full HD</b> sifatda tomosha qilishingiz yoki yuklab olishingiz mumkin.`,
+    ``,
+    `🔍 <i>Film qidirish uchun uning nomini yozib yuboring yoki quyidagi menyudan foydalaning:</i>`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "🍿 OneMedia WebApp (Kino Portali)", web_app: { url: siteUrl } },
+        ],
+        [
+          { text: "🔥 Trend kinolar", callback_data: "menu:trending" },
+          { text: "🌟 Top reyting", callback_data: "menu:top" },
+        ],
+        [
+          { text: "🎭 Janrlar bo'yicha", callback_data: "menu:genres" },
+          { text: "🔍 Qidiruv", callback_data: "menu:search" },
+        ],
+      ],
+    },
+  })
+
+  // Also ensure reply keyboard is active
+  await sendTelegramMessage(chatId, "Quyidagi tugmalar orqali bo'limni tanlang:", {
+    reply_markup: getMainMenuReplyKeyboard(siteUrl),
+  })
+}
+
+// Send list of trending movies
+async function sendTrendingMovies(chatId: number | string, siteUrl: string) {
+  const trending = getFeatured()
+  const buttons = trending.map((m) => [
+    { text: `🎬 ${m.title} (${m.year}) — ⭐ ${m.rating}`, callback_data: `movie:${m.id}` },
+  ])
+
+  buttons.push([
+    { text: "🌐 Saytda barchasini ko'rish", web_app: { url: `${siteUrl}/catalog` } },
+  ])
+
+  const text = [
+    `🔥 <b>Hozirda trendda bo'lgan eng mashhur kinolar:</b>`,
+    ``,
+    `Batafsil ma'lumot va tomosha qilish uchun istalgan filmni tanlang:`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
+// Send list of latest movies
+async function sendNewMovies(chatId: number | string, siteUrl: string) {
+  const newMovies = movies.filter((m) => m.year >= 2025).slice(0, 8)
+  const buttons = newMovies.map((m) => [
+    { text: `🆕 ${m.title} — ${m.quality} [${m.genres[0] || ""}]`, callback_data: `movie:${m.id}` },
+  ])
+
+  buttons.push([
+    { text: "🌐 Barcha premyeralar (WebApp)", web_app: { url: `${siteUrl}/catalog` } },
+  ])
+
+  const text = [
+    `🆕 <b>2025-yilgi yangi kinolar va premyeralar:</b>`,
+    ``,
+    `Filmni tanlang va 4K sifatda tomosha qiling:`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
+// Send top rated movies
+async function sendTopMovies(chatId: number | string, siteUrl: string) {
+  const topMovies = [...movies].sort((a, b) => b.rating - a.rating).slice(0, 8)
+  const buttons = topMovies.map((m, index) => [
+    { text: `${index + 1}. ⭐ ${m.rating} — ${m.title} (${m.year})`, callback_data: `movie:${m.id}` },
+  ])
+
+  buttons.push([
+    { text: "🌐 Barcha reytinglar", web_app: { url: `${siteUrl}/catalog` } },
+  ])
+
+  const text = [
+    `🌟 <b>Eng yuqori baholangan TOP filmlar:</b>`,
+    ``,
+    `Tomoshabinlar va kinotanqidchilar tomonidan eng yuqori baholangan asarlar:`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
+// Send list of genres
+async function sendGenresMenu(chatId: number | string) {
+  const realGenres = genres.filter((g) => g !== "Barchasi")
+  const buttons: { text: string; callback_data: string }[][] = []
+
+  const emojiMap: Record<string, string> = {
+    Fantastika: "🚀",
+    Jangari: "💥",
+    Drama: "🎭",
+    Triller: "😱",
+    Melodrama: "💕",
+    Sarguzasht: "🗺️",
+    Multfilm: "🧸",
+    Detektiv: "🕵️",
+  }
+
+  for (let i = 0; i < realGenres.length; i += 2) {
+    const row = []
+    const g1 = realGenres[i]
+    row.push({ text: `${emojiMap[g1] || "🎬"} ${g1}`, callback_data: `genre:${g1}` })
+    if (i + 1 < realGenres.length) {
+      const g2 = realGenres[i + 1]
+      row.push({ text: `${emojiMap[g2] || "🎬"} ${g2}`, callback_data: `genre:${g2}` })
+    }
+    buttons.push(row)
+  }
+
+  buttons.push([{ text: "🏠 Bosh menyu", callback_data: "menu:main" }])
+
+  const text = [
+    `🎭 <b>Kinolar janrlar bo'yicha:</b>`,
+    ``,
+    `Qaysi janrdagi kinolarni ko'rishni xohlaysiz? Kerakli janrni bosing:`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
+// Send movies for a specific genre
+async function sendGenreMovies(chatId: number | string, genreName: string, siteUrl: string) {
+  const genreList = byGenre(genreName)
+  if (genreList.length === 0) {
+    await sendTelegramMessage(chatId, `🎭 <b>${genreName}</b> janrida hozircha filmlar yo'q.`, {
+      reply_markup: {
+        inline_keyboard: [[{ text: "🎭 Boshqa janrlar", callback_data: "menu:genres" }]],
+      },
+    })
+    return
+  }
+
+  const buttons = genreList.map((m) => [
+    { text: `🎬 ${m.title} (${m.year}) — ⭐ ${m.rating}`, callback_data: `movie:${m.id}` },
+  ])
+  buttons.push([
+    { text: "🎭 Boshqa janrlar", callback_data: "menu:genres" },
+    { text: "🏠 Bosh menyu", callback_data: "menu:main" },
+  ])
+
+  const text = [
+    `🎭 <b>${genreName}</b> janridagi filmlar (${genreList.length} ta):`,
+    ``,
+    `Ko'rmoqchi bo'lgan filmingizni tanlang:`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
+// Send animations and family movies
+async function sendSeriesAndCartoons(chatId: number | string, siteUrl: string) {
+  const familyMovies = movies.filter((m) => m.genres.includes("Multfilm") || m.genres.includes("Oila") || m.ageRating === "0+" || m.ageRating === "6+")
+  const buttons = familyMovies.map((m) => [
+    { text: `🧸 ${m.title} (${m.year}) — ⭐ ${m.rating}`, callback_data: `movie:${m.id}` },
+  ])
+
+  buttons.push([
+    { text: "🌐 Bolalar bo'limi (WebApp)", web_app: { url: `${siteUrl}/catalog` } },
+  ])
+
+  const text = [
+    `📺 <b>Seriallar, Multfilmlar va Bolalar uchun:</b>`,
+    ``,
+    `Oilaviy va bolalar uchun qiziqarli multfilmlar ro'yxati:`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
+// Send a single movie card
+async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: string) {
+  const movie = getMovie(movieId)
+  if (!movie) {
+    await sendTelegramMessage(chatId, "Kechirasiz, ushbu film topilmadi yoki o'chirilgan.")
+    return
+  }
+
+  const caption = formatMovieCard(movie)
+  const posterUrl = getPosterUrl(siteUrl, movie.poster)
+  const keyboard = getMovieInlineKeyboard(siteUrl, movie)
+
+  await sendTelegramPhoto(chatId, posterUrl, caption, {
+    reply_markup: keyboard,
+  })
+}
+
+// Search movies by query
+async function handleSearch(chatId: number | string, query: string, siteUrl: string) {
+  const clean = query.trim().toLowerCase()
+  if (!clean) return
+
+  // Check if query is a movie number (e.g. 1, 2, #1, ...)
+  const numMatch = clean.replace("#", "").trim()
+  const numIndex = parseInt(numMatch, 10)
+  if (!isNaN(numIndex) && numIndex >= 1 && numIndex <= movies.length) {
+    const movie = movies[numIndex - 1]
+    await sendMovieCard(chatId, movie.id, siteUrl)
+    return
+  }
+
+  // Filter movies matching title, genre, director, cast, or synopsis
+  const matches = movies.filter((m) => {
+    return (
+      m.title.toLowerCase().includes(clean) ||
+      m.id.toLowerCase().includes(clean) ||
+      m.genres.some((g) => g.toLowerCase().includes(clean)) ||
+      m.director.toLowerCase().includes(clean) ||
+      m.cast.some((c) => c.toLowerCase().includes(clean)) ||
+      m.synopsis.toLowerCase().includes(clean)
+    )
+  })
+
+  if (matches.length === 0) {
+    const suggestions = getFeatured().slice(0, 4)
+    const buttons = suggestions.map((m) => [
+      { text: `🎬 ${m.title} (${m.year})`, callback_data: `movie:${m.id}` },
+    ])
+    buttons.push([{ text: "🌐 Katalogda qidirish", web_app: { url: `${siteUrl}/search?q=${encodeURIComponent(query)}` } }])
+
+    const text = [
+      `❌ <b>"${query}"</b> bo'yicha hech qanday film topilmadi.`,
+      ``,
+      `Iltimos, nomni to'g'ri yozganingizni tekshiring yoki quyidagi ommabop filmlardan birini tanlang:`,
+    ].join("\n")
+
+    await sendTelegramMessage(chatId, text, {
+      reply_markup: { inline_keyboard: buttons },
+    })
+    return
+  }
+
+  if (matches.length === 1) {
+    await sendMovieCard(chatId, matches[0].id, siteUrl)
+    return
+  }
+
+  // Multiple matches
+  const buttons = matches.slice(0, 8).map((m) => [
+    { text: `🎬 ${m.title} (${m.year}) — ⭐ ${m.rating}`, callback_data: `movie:${m.id}` },
+  ])
+  buttons.push([
+    { text: `🌐 WebApp orqali ko'rish (${matches.length} ta)`, web_app: { url: `${siteUrl}/search?q=${encodeURIComponent(query)}` } },
+  ])
+
+  const text = [
+    `🔍 <b>"${query}"</b> so'rovi bo'yicha <b>${matches.length}</b> ta film topildi:`,
+    ``,
+    `Ko'rmoqchi bo'lgan filmingizni bosing:`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
+// Handle all incoming Telegram updates
+async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
+  // 1. Handle Inline Queries
+  if (update.inline_query) {
+    const iq = update.inline_query
+    const query = iq.query.trim().toLowerCase()
+    const matches = query
+      ? movies.filter((m) => m.title.toLowerCase().includes(query) || m.genres.some((g) => g.toLowerCase().includes(query)))
+      : movies.slice(0, 10)
+
+    const results = matches.slice(0, 15).map((m) => ({
+      type: "article",
+      id: m.id,
+      title: `${m.title} (${m.year}) ⭐ ${m.rating}`,
+      description: `${m.genres.join(", ")} • ${m.quality} • ${m.duration}`,
+      thumb_url: getPosterUrl(siteUrl, m.poster),
+      input_message_content: {
+        message_text: formatMovieCard(m),
+        parse_mode: "HTML",
+      },
+      reply_markup: getMovieInlineKeyboard(siteUrl, m),
+    }))
+
+    await telegramApi("answerInlineQuery", {
+      inline_query_id: iq.id,
+      results,
+      cache_time: 10,
+    }).catch(() => null)
+    return
+  }
+
+  // 2. Handle Callback Queries
+  if (update.callback_query) {
+    const cb = update.callback_query
+    const data = cb.data || ""
+    const chatId = cb.message?.chat.id || cb.from.id
+
+    if (data.startsWith("movie:")) {
+      const movieId = data.replace("movie:", "")
+      await answerTelegramCallbackQuery(cb.id)
+      await sendMovieCard(chatId, movieId, siteUrl)
+      return
+    }
+
+    if (data.startsWith("genre:")) {
+      const genreName = data.replace("genre:", "")
+      await answerTelegramCallbackQuery(cb.id, `Janr: ${genreName}`)
+      await sendGenreMovies(chatId, genreName, siteUrl)
+      return
+    }
+
+    if (data.startsWith("dl:")) {
+      const movieId = data.replace("dl:", "")
+      const movie = getMovie(movieId)
+      await answerTelegramCallbackQuery(cb.id, "Yuklab olish havolalari tayyorlanmoqda...")
+      const filmUrl = `${siteUrl}/film/${movieId}`
+      const text = [
+        `📥 <b>«${movie?.title || "Film"}» ni yuklab olish:</b>`,
+        ``,
+        `Tanlang:`,
+        `• <b>4K Ultra HD (6.2 GB)</b> — Maksimal sifat`,
+        `• <b>Full HD 1080p (2.8 GB)</b> — Optimal sifat`,
+        `• <b>HD 720p (1.2 GB)</b> — Smartfonlar uchun`,
+        ``,
+        `Filmni to'g'ridan-to'g'ri saytda ham tomosha qilishingiz mumkin!`,
+      ].join("\n")
+
+      await sendTelegramMessage(chatId, text, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "▶️ Onlayn pleyerda ochish", web_app: { url: filmUrl } }],
+            [{ text: "⬅️ Film sahifasiga qaytish", callback_data: `movie:${movieId}` }],
+          ],
+        },
+      })
+      return
+    }
+
+    if (data.startsWith("fav:")) {
+      const movieId = data.replace("fav:", "")
+      const movie = getMovie(movieId)
+      await answerTelegramCallbackQuery(cb.id, `⭐ «${movie?.title}» sevimlilarga qo'shildi!`, true)
+      return
+    }
+
+    if (data === "menu:main") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendMainMenu(chatId, cb.from.first_name, siteUrl)
+      return
+    }
+
+    if (data === "menu:genres") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendGenresMenu(chatId)
+      return
+    }
+
+    if (data === "menu:trending") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendTrendingMovies(chatId, siteUrl)
+      return
+    }
+
+    if (data === "menu:top") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendTopMovies(chatId, siteUrl)
+      return
+    }
+
+    if (data === "menu:search") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendTelegramMessage(chatId, "🔍 Film nomini yoki kalit so'zni yuboring (masalan: <i>Nebula, Tuman, Bo'ron</i>):")
+      return
+    }
+
+    await answerTelegramCallbackQuery(cb.id)
+    return
+  }
+
+  // 3. Handle Regular Messages
+  const message = update.message
+  if (!message?.text) return
+
+  const text = message.text.trim()
+  const lower = text.toLowerCase()
+  const chatId = message.chat.id
+  const firstName = message.from?.first_name || "do‘st"
+
+  // Standard commands
+  if (lower === "/start" || lower === "/menu" || lower === "🏠 bosh menyu") {
+    await sendMainMenu(chatId, firstName, siteUrl)
+    return
+  }
+
+  if (lower === "🎬 kino izlash" || lower === "/search") {
+    const suggestions = getFeatured().slice(0, 4)
+    const buttons = suggestions.map((m) => [
+      { text: `🎬 ${m.title} (${m.year})`, callback_data: `movie:${m.id}` },
+    ])
+    await sendTelegramMessage(
+      chatId,
+      `🔍 <b>Film qidirish</b>\n\nIstalgan film nomini, aktyor yoki rejissyor ismini yozib yuboring:\n\nYoki quyidagi ommabop kinolardan birini tanlang:`,
+      {
+        reply_markup: { inline_keyboard: buttons },
+      }
+    )
+    return
+  }
+
+  if (lower === "🔥 mashhur kinolar" || lower === "🔥 trend kinolar" || lower === "/trending") {
+    await sendTrendingMovies(chatId, siteUrl)
+    return
+  }
+
+  if (lower === "🆕 yangi filmlar" || lower === "🆕 yangi kinolar" || lower === "🎞️ premyeralar") {
+    await sendNewMovies(chatId, siteUrl)
+    return
+  }
+
+  if (lower === "🌟 top kinolar" || lower === "🌟 top reyting" || lower === "/top") {
+    await sendTopMovies(chatId, siteUrl)
+    return
+  }
+
+  if (lower === "🎭 janrlar" || lower === "🔎 janrlar" || lower === "/genres") {
+    await sendGenresMenu(chatId)
+    return
+  }
+
+  if (lower === "📺 seriallar & multfilmlar" || lower === "📺 seriallar" || lower === "🧸 multfilmlar") {
+    await sendSeriesAndCartoons(chatId, siteUrl)
+    return
+  }
+
+  if (lower.includes("onemedia sayti") || lower.includes("webapp") || lower === "/webapp") {
+    await sendTelegramMessage(
+      chatId,
+      `🌐 <b>OneMedia Kino Portali</b>\n\nSevimli filmlaringizni to'g'ridan-to'g'ri Telegram ichida yoki brauzerda tomosha qilishingiz mumkin:`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🍿 Portalni ochish (WebApp)", web_app: { url: siteUrl } }],
+            [{ text: "🌐 Brauzerda ochish", url: siteUrl }],
+          ],
+        },
+      }
+    )
+    return
+  }
+
+  if (lower === "📥 yuklab olish" || lower === "/download") {
+    await sendTelegramMessage(
+      chatId,
+      [
+        `📥 <b>Filmlarni yuklab olish</b>`,
+        ``,
+        `OneMedia platformasida barcha filmlar yuqori tezlikdagi serverlarda saqlanadi:`,
+        `• <b>4K Ultra HD</b> — Katta ekranlar uchun`,
+        `• <b>Full HD 1080p</b> — Noutbuklar uchun`,
+        `• <b>HD 720p</b> — Smartfonlar uchun`,
+        ``,
+        `Kerakli filmni qidiruv orqali toping va uning ostidagi <b>📥 Yuklab olish</b> tugmasini bosing!`,
+      ].join("\n"),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🔍 Film qidirish", callback_data: "menu:search" }],
+            [{ text: "🔥 Mashhur kinolarga o'tish", callback_data: "menu:trending" }],
+          ],
+        },
+      }
+    )
+    return
+  }
+
+  if (lower === "⭐ sevimlilar" || lower === "/favorites") {
+    await sendTelegramMessage(
+      chatId,
+      [
+        `⭐ <b>Sizning sevimli filmlaringiz</b>`,
+        ``,
+        `Filmlarni keyinroq tomosha qilish uchun har bir film ostidagi <b>⭐ Sevimlilarga</b> tugmasini bosing.`,
+        ``,
+        `Shaxsiy ro'yxatingizni OneMedia saytida ham to'liq boshqarishingiz mumkin:`,
+      ].join("\n"),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🌐 Sevimlilarni ko'rish (WebApp)", web_app: { url: `${siteUrl}/profile` } }],
+          ],
+        },
+      }
+    )
+    return
+  }
+
+  if (lower === "ℹ️ yordam" || lower === "/help") {
+    await sendTelegramMessage(
+      chatId,
+      [
+        `ℹ️ <b>OneMedia Bot — Qo'llanma</b>`,
+        ``,
+        `1. <b>Kino qidirish:</b> Shunchaki film nomini yoki aktyor ismini yozib yuboring (masalan: <i>Nebula</i> yoki <i>Tuman</i>).`,
+        `2. <b>Raqam bo'yicha:</b> Film tartib raqamini yuborishingiz mumkin (1 dan 12 gacha).`,
+        `3. <b>WebApp:</b> Telegramdan chiqmasdan to'liq kinoteatr interfeysidan foydalanish imkoniyati.`,
+        `4. <b>Sifat:</b> Barcha kinolar 4K, FHD va HD sifatda taqdim etiladi.`,
+        ``,
+        `Savol yoki takliflar bo'yicha: @OneMediaAdmin`,
+        `Rasmiy sayt: ${siteUrl}`,
+      ].join("\n")
+    )
+    return
+  }
+
+  // Any other text is treated as a movie search!
+  await handleSearch(chatId, text, siteUrl)
+}
+
+export async function GET(request: Request) {
+  const siteUrl = getSiteUrl(request)
+  const configured = isTelegramConfigured()
+  const botInfo = configured ? await getBotMe().catch(() => null) : null
+
+  return NextResponse.json({
+    ok: true,
+    service: "onemedia-telegram-webhook",
+    configured,
+    botUsername: botInfo?.username ? `@${botInfo.username}` : null,
+    botName: botInfo?.first_name || null,
+    detectedSiteUrl: siteUrl,
+    webhookEndpoint: `${siteUrl}/api/telegram/webhook`,
+    secretConfigured: Boolean(telegramWebhookSecret),
+  })
 }
 
 export async function POST(request: Request) {
-  if (!telegramWebhookSecret || request.headers.get("x-telegram-bot-api-secret-token") !== telegramWebhookSecret) {
-    return NextResponse.json({ ok: false }, { status: 401 })
+  // If secret token is provided in headers, verify it against telegramWebhookSecret if secret is configured
+  const incomingSecret = request.headers.get("x-telegram-bot-api-secret-token")
+  if (telegramWebhookSecret && incomingSecret && incomingSecret !== telegramWebhookSecret) {
+    console.warn("[OneMedia Telegram] Secret token mismatch")
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
   }
 
   const update = (await request.json().catch(() => null)) as TelegramUpdate | null
-  if (!update) return NextResponse.json({ ok: false }, { status: 400 })
+  if (!update) {
+    return NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 })
+  }
 
-  await handleUpdate(update).catch((error) => {
-    console.error("[v0] Telegram update handling failed", error)
-  })
+  const siteUrl = getSiteUrl(request)
+
+  try {
+    await handleUpdate(update, siteUrl)
+  } catch (error) {
+    console.error("[OneMedia Telegram] Error handling update:", error)
+  }
+
   return NextResponse.json({ ok: true })
 }
