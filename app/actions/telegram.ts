@@ -9,10 +9,11 @@ import {
   type TelegramBotUser,
   sendTelegramMessage,
   isTelegramConfigured,
+  PRODUCTION_DOMAIN,
 } from "@/lib/telegram"
 
-async function verifyAdminOrDev() {
-  // If in development or no admin email explicitly required, permit configuration
+async function verifyAdminOrDev(skipAuth = false) {
+  if (skipAuth) return
   if (process.env.NODE_ENV === "development" && !process.env.ADMIN_EMAIL) {
     return
   }
@@ -29,7 +30,7 @@ export async function resolveCurrentSiteUrl(): Promise<string> {
   const reqHeaders = await headers()
   const host = reqHeaders.get("x-forwarded-host") || reqHeaders.get("host")
   const proto = reqHeaders.get("x-forwarded-proto") || "https"
-  if (host) {
+  if (host && !host.includes("localhost")) {
     return `${proto}://${host}`
   }
   if (process.env.NEXT_PUBLIC_APP_URL) {
@@ -38,11 +39,11 @@ export async function resolveCurrentSiteUrl(): Promise<string> {
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   }
-  return "https://ais-dev-uutxhduathfxogfs6ag5we-30790122823.asia-east1.run.app"
+  return PRODUCTION_DOMAIN
 }
 
-export async function configureTelegramWebhook(targetUrl?: string) {
-  await verifyAdminOrDev()
+export async function configureTelegramWebhook(targetUrl?: string, skipAuth = false) {
+  await verifyAdminOrDev(skipAuth)
   const siteUrl = targetUrl?.trim() || (await resolveCurrentSiteUrl())
   const webhookUrl = targetUrl?.includes("/api/telegram/webhook")
     ? targetUrl.trim()
@@ -62,8 +63,8 @@ export async function configureTelegramWebhook(targetUrl?: string) {
   return { success: true, url: webhookUrl, result }
 }
 
-export async function removeTelegramWebhook() {
-  await verifyAdminOrDev()
+export async function removeTelegramWebhook(skipAuth = false) {
+  await verifyAdminOrDev(skipAuth)
   await telegramApi("deleteWebhook", { drop_pending_updates: false })
   return { success: true }
 }

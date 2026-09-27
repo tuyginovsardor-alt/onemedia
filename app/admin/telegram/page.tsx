@@ -118,9 +118,9 @@ export default async function TelegramAdminPage() {
         </p>
 
         <div className="mt-5 rounded-xl border border-white/5 bg-black/30 p-4">
-          <p className="text-xs text-white/40">Hozirgi server domeni bo&apos;yicha aniqlangan Webhook URL:</p>
+          <p className="text-xs text-white/40">Asosiy domen bo&apos;yicha Webhook URL:</p>
           <code className="mt-1.5 block break-all font-mono text-sm text-cyan-300">
-            {detectedWebhookUrl}
+            https://onemedia-mocha.vercel.app/api/telegram/webhook
           </code>
         </div>
 
@@ -128,21 +128,35 @@ export default async function TelegramAdminPage() {
           <form
             action={async () => {
               'use server'
-              await configureTelegramWebhook(detectedWebhookUrl)
+              await configureTelegramWebhook("https://onemedia-mocha.vercel.app/api/telegram/webhook", true)
             }}
           >
             <button
               type="submit"
               className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-400/20 transition hover:bg-cyan-300 active:scale-95"
             >
-              <RefreshCw className="h-4 w-4" /> Hozirgi domen bilan Webhookni ulash
+              <RefreshCw className="h-4 w-4" /> onemedia-mocha.vercel.app bilan Webhookni ulash
             </button>
           </form>
 
           <form
             action={async () => {
               'use server'
-              await removeTelegramWebhook()
+              await configureTelegramWebhook(detectedWebhookUrl, true)
+            }}
+          >
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-2.5 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/20 active:scale-95"
+            >
+              <RefreshCw className="h-4 w-4" /> Hozirgi server domeni bilan ulash
+            </button>
+          </form>
+
+          <form
+            action={async () => {
+              'use server'
+              await removeTelegramWebhook(true)
             }}
           >
             <button

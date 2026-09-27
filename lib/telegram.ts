@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto"
 
+export const PRODUCTION_DOMAIN = "https://onemedia-mocha.vercel.app"
+
 export function getTelegramBotToken(): string {
   return process.env.TELEGRAM_BOT_TOKEN || ""
 }
