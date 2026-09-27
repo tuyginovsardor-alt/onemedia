@@ -233,18 +233,18 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
         {!playing && (
           <button
             onClick={togglePlay}
-            className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-[2px] transition-transform hover:scale-105"
+            className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-[2px] transition-transform active:scale-95 hover:scale-105"
             aria-label="O'ynatish"
           >
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-400/40">
-              <Play className="h-9 w-9 fill-current ml-1" />
+            <span className="flex h-12 w-12 sm:h-18 sm:w-18 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-400/40">
+              <Play className="h-6 w-6 sm:h-8 sm:w-8 fill-current ml-0.5" />
             </span>
           </button>
         )}
 
         {/* Quality Watermark */}
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-          <span className="rounded-md border border-cyan-400/30 bg-black/60 px-2.5 py-1 text-xs font-extrabold text-cyan-400 backdrop-blur">
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
+          <span className="rounded-md border border-cyan-400/30 bg-black/60 px-2 py-0.5 text-[10px] sm:text-xs font-extrabold text-cyan-400 backdrop-blur">
             {quality} ULTRA HD
           </span>
         </div>
@@ -252,7 +252,7 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
         {/* Control Bar */}
         <div
           className={cn(
-            "absolute inset-x-0 bottom-0 z-30 flex flex-col gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-4 transition-opacity duration-300",
+            "absolute inset-x-0 bottom-0 z-30 flex flex-col gap-1.5 sm:gap-2 bg-gradient-to-t from-black via-black/80 to-transparent p-2.5 sm:p-4 transition-opacity duration-300",
             controlsVisible || !playing ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
         >
@@ -268,22 +268,22 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3 text-white">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-2 text-white">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button onClick={togglePlay} className="p-1 hover:text-cyan-400 transition">
-                {playing ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 fill-current" />}
+                {playing ? <Pause className="h-5 w-5 sm:h-6 sm:w-6 fill-current" /> : <Play className="h-5 w-5 sm:h-6 sm:w-6 fill-current" />}
               </button>
-              <button onClick={() => jump(-10)} title="-10 soniya" className="p-1 hover:text-cyan-400 transition">
-                <RotateCcw className="h-5 w-5" />
+              <button onClick={() => jump(-10)} title="-10 soniya" className="p-1 hover:text-cyan-400 transition hidden xs:block">
+                <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
-              <button onClick={() => jump(10)} title="+10 soniya" className="p-1 hover:text-cyan-400 transition">
-                <RotateCw className="h-5 w-5" />
+              <button onClick={() => jump(10)} title="+10 soniya" className="p-1 hover:text-cyan-400 transition hidden xs:block">
+                <RotateCw className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
 
               {/* Volume */}
-              <div className="flex items-center gap-2 group/vol">
+              <div className="flex items-center gap-1.5 group/vol">
                 <button onClick={toggleMute} className="p-1 hover:text-cyan-400 transition">
-                  {muted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                  {muted || volume === 0 ? <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />}
                 </button>
                 <input
                   type="range"
@@ -292,17 +292,17 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
                   step={0.05}
                   value={muted ? 0 : volume}
                   onChange={handleVolume}
-                  className="w-16 h-1 cursor-pointer appearance-none rounded-full bg-white/30 accent-cyan-400 hidden sm:block"
+                  className="w-14 sm:w-16 h-1 cursor-pointer appearance-none rounded-full bg-white/30 accent-cyan-400 hidden sm:block"
                 />
               </div>
 
               {/* Timestamp */}
-              <span className="text-xs font-semibold text-white/90 font-mono">
+              <span className="text-[11px] sm:text-xs font-semibold text-white/90 font-mono">
                 {formatTime(currentTime)} <span className="text-white/40">/ {formatTime(duration)}</span>
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               {/* Speed Selector */}
               <button
                 onClick={() => {
@@ -310,7 +310,7 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
                   setSpeed(nextSpeed)
                   if (videoRef.current) videoRef.current.playbackRate = nextSpeed
                 }}
-                className="rounded border border-white/20 px-2 py-0.5 text-xs font-bold text-white hover:border-cyan-400 hover:text-cyan-400"
+                className="rounded border border-white/20 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white hover:border-cyan-400 hover:text-cyan-400"
               >
                 {speed}x
               </button>
@@ -318,14 +318,14 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
               {/* Quality Switcher */}
               <button
                 onClick={() => setQuality((q) => (q === "4K" ? "1080p" : q === "1080p" ? "720p" : "4K"))}
-                className="rounded bg-cyan-400/20 border border-cyan-400/40 px-2 py-0.5 text-xs font-bold text-cyan-300"
+                className="rounded bg-cyan-400/20 border border-cyan-400/40 px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-cyan-300"
               >
                 {quality}
               </button>
 
               {/* Fullscreen */}
               <button onClick={toggleFullscreen} className="p-1 hover:text-cyan-400 transition">
-                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+                {isFullscreen ? <Minimize className="h-4 w-4 sm:h-5 sm:w-5" /> : <Maximize className="h-4 w-4 sm:h-5 sm:w-5" />}
               </button>
             </div>
           </div>

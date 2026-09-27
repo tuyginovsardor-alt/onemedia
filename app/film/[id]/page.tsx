@@ -23,81 +23,82 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="relative">
       {/* Backdrop */}
-      <div className="absolute inset-x-0 top-0 h-[60vh]">
+      <div className="absolute inset-x-0 top-0 h-[45vh] md:h-[60vh] pointer-events-none">
         <Image src={movie.backdrop || "/placeholder.svg"} alt="" fill className="object-cover" priority />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#070913]/50 via-[#070913]/85 to-[#070913]" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 pt-8 md:px-8 md:pt-14">
-        <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
+      <div className="relative mx-auto max-w-7xl px-4 pt-4 md:px-8 md:pt-12 pb-36">
+        <div className="grid gap-6 md:gap-8 lg:grid-cols-[280px_1fr]">
           {/* Poster */}
-          <div className="mx-auto w-48 shrink-0 lg:mx-0 lg:w-full">
-            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl ring-1 ring-white/15 glow-blue">
+          <div className="mx-auto w-44 sm:w-56 shrink-0 lg:mx-0 lg:w-full">
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl ring-1 ring-white/15 shadow-2xl glow-blue">
               <Image src={movie.poster || "/placeholder.svg"} alt={`${movie.title} afishasi`} fill className="object-cover" />
             </div>
           </div>
 
           {/* Info */}
-          <div className="space-y-5">
-            <div className="flex flex-wrap gap-2">
+          <div className="space-y-4 sm:space-y-5">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {movie.genres.map((g) => (
-                <span key={g} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white ring-1 ring-white/15">
+                <span key={g} className="rounded-full bg-white/10 px-3 py-1 text-[11px] sm:text-xs font-medium text-white ring-1 ring-white/15">
                   {g}
                 </span>
               ))}
             </div>
 
-            <h1 className="font-display text-4xl font-black text-white md:text-5xl text-balance">{movie.title}</h1>
+            <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-black text-white text-balance">{movie.title}</h1>
 
-            <div className="flex flex-wrap items-center gap-4 text-sm text-white/80">
-              <span className="flex items-center gap-1 text-lg font-bold text-amber-400">
-                <Star className="h-5 w-5 fill-amber-400" />
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-white/80">
+              <span className="flex items-center gap-1 font-bold text-amber-400">
+                <Star className="h-4 w-4 fill-amber-400" />
                 {movie.rating.toFixed(1)}
               </span>
               <span>{movie.year}</span>
-              <span className="rounded border border-white/25 px-1.5 text-xs">{movie.ageRating}</span>
+              <span className="rounded border border-white/25 px-1.5 text-[11px]">{movie.ageRating}</span>
               <span>{movie.duration}</span>
-              <span className="rounded-md bg-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">
+              <span className="rounded-md bg-cyan-400/20 px-2 py-0.5 text-xs font-bold text-cyan-300">
                 {movie.quality}
               </span>
             </div>
 
-            <p className="max-w-2xl text-pretty leading-relaxed text-white/75">{movie.synopsis}</p>
+            <p className="max-w-2xl text-xs sm:text-sm text-pretty leading-relaxed text-white/75">{movie.synopsis}</p>
 
-            <div className="grid gap-1 text-sm text-white/70">
+            <div className="grid gap-1 text-xs sm:text-sm text-white/70">
               <p>
-                <span className="text-muted-foreground">Rejissyor:</span>{" "}
-                <span className="text-white">{movie.director}</span>
+                <span className="text-white/40">Rejissyor:</span>{" "}
+                <span className="text-white font-medium">{movie.director}</span>
               </p>
               <p>
-                <span className="text-muted-foreground">Rollarda:</span>{" "}
-                <span className="text-white">{movie.cast.join(", ")}</span>
+                <span className="text-white/40">Rollarda:</span>{" "}
+                <span className="text-white font-medium">{movie.cast.join(", ")}</span>
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+            {/* Action Buttons: Responsive 4-col on mobile, flex on desktop */}
+            <div className="grid grid-cols-4 gap-2 pt-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
               <a
                 href="#player"
-                className="flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-bold text-black transition-transform hover:scale-105"
+                className="col-span-4 sm:col-auto flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-6 py-3 text-xs sm:text-sm font-bold text-slate-950 shadow-lg shadow-cyan-400/20 active:scale-95 transition hover:bg-cyan-300"
               >
-                <Star className="h-5 w-5 fill-current" />
+                <Star className="h-4 w-4 fill-current" />
                 Hoziroq tomosha qilish
               </a>
-              <button className="flex items-center gap-2 rounded-full glass px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/20 transition-colors hover:bg-white/10">
-                <Plus className="h-5 w-5" /> Ro'yxatga
+              <button className="col-span-2 sm:col-auto flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-2.5 px-4 text-xs font-semibold text-white hover:bg-white/10 active:scale-95 transition">
+                <Plus className="h-4 w-4" /> Ro&apos;yxatga
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full glass text-white ring-1 ring-white/20 transition-colors hover:bg-white/10" aria-label="Yuklab olish">
-                <Download className="h-5 w-5" />
+              <button className="col-span-1 sm:col-auto flex h-10 w-full sm:w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 active:scale-95 transition" aria-label="Yuklab olish">
+                <Download className="h-4 w-4" />
               </button>
-              <button className="flex h-12 w-12 items-center justify-center rounded-full glass text-white ring-1 ring-white/20 transition-colors hover:bg-white/10" aria-label="Ulashish">
-                <Share2 className="h-5 w-5" />
+              <button className="col-span-1 sm:col-auto flex h-10 w-full sm:w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 active:scale-95 transition" aria-label="Ulashish">
+                <Share2 className="h-4 w-4" />
               </button>
             </div>
           </div>
         </div>
 
         {/* Player */}
-        <div id="player" className="mt-12 scroll-mt-20 space-y-4">
+        <div id="player" className="mt-12 scroll-mt-24 space-y-4">
           <h2 className="font-display text-2xl font-bold text-white">Onlayn ko&apos;rish</h2>
           <VideoPlayer
             poster={movie.backdrop}

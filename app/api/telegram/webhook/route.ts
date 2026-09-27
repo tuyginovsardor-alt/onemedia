@@ -836,13 +836,36 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
   const lower = text.toLowerCase()
 
   // Admin command
-  if (lower === "/admin" || lower === "admin" || lower === "/panel" || lower === "/stats" || lower === "👑 admin" || lower === "admin panel") {
+  if (
+    lower === "/admin" ||
+    lower === "admin" ||
+    lower === "/panel" ||
+    lower === "/stats" ||
+    lower === "👑 admin" ||
+    lower === "admin panel"
+  ) {
     await sendAdminPanel(chatId, firstName, siteUrl)
     return
   }
 
+  // Start command (with deep linking support, e.g. /start admin)
+  if (lower.startsWith("/start")) {
+    const payload = lower.replace("/start", "").trim()
+    if (payload === "admin" || payload.startsWith("admin_")) {
+      await sendAdminPanel(chatId, firstName, siteUrl)
+      return
+    }
+    if (payload.startsWith("movie_") || payload.startsWith("film_")) {
+      const movieId = payload.replace(/^(movie_|film_)/, "").trim()
+      await sendMovieCard(chatId, movieId, siteUrl)
+      return
+    }
+    await sendMainMenu(chatId, firstName, siteUrl)
+    return
+  }
+
   // Standard commands
-  if (lower === "/start" || lower === "/menu" || lower === "🏠 bosh menyu") {
+  if (lower === "/menu" || lower === "🏠 bosh menyu") {
     await sendMainMenu(chatId, firstName, siteUrl)
     return
   }
