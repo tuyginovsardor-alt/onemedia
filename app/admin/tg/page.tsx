@@ -37,10 +37,11 @@ import {
   Sparkles,
   LogOut,
 } from 'lucide-react'
-import { verifyAdminSignature, getAdminSessionFromCookie } from "@/lib/admin-auth"
+import { verifyAdminSignature, getAdminSessionFromCookie, getAdminProfileDetails } from "@/lib/admin-auth"
 import { AdminAuthGate } from "@/components/admin-auth-gate"
 import { logoutAdminAction } from "@/app/actions/admin-auth-actions"
 import { SmartMediaAdder } from "@/components/smart-media-adder"
+import { AdminProfileBanner } from "@/components/admin-profile-banner"
 
 export default async function TelegramAdminAppPage({
   searchParams,
@@ -62,6 +63,8 @@ export default async function TelegramAdminAppPage({
   if (!isAuthenticated) {
     return <AdminAuthGate returnUrl="/admin/tg" />
   }
+
+  const adminProfile = getAdminProfileDetails(session?.identifier)
 
   const allMedia = getAllMedia()
   const admins = getAdmins()
@@ -111,7 +114,10 @@ export default async function TelegramAdminAppPage({
         </div>
       </div>
 
-      <div className="p-4 space-y-6 max-w-lg mx-auto">
+      <div className="p-4 space-y-5 max-w-lg mx-auto">
+        {/* Super Admin Profile Banner */}
+        <AdminProfileBanner admin={adminProfile} currentView="tg" />
+
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 gap-2.5">
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5">

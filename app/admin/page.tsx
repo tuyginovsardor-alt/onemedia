@@ -41,10 +41,11 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react'
-import { verifyAdminSignature, getAdminSessionFromCookie } from "@/lib/admin-auth"
+import { verifyAdminSignature, getAdminSessionFromCookie, getAdminProfileDetails } from "@/lib/admin-auth"
 import { AdminAuthGate } from "@/components/admin-auth-gate"
 import { logoutAdminAction } from "@/app/actions/admin-auth-actions"
 import { SmartMediaAdder } from "@/components/smart-media-adder"
+import { AdminProfileBanner } from "@/components/admin-profile-banner"
 
 export default async function WebAdminStudioPage({
   searchParams,
@@ -66,6 +67,8 @@ export default async function WebAdminStudioPage({
   if (!isAuthenticated) {
     return <AdminAuthGate returnUrl="/admin" />
   }
+
+  const adminProfile = getAdminProfileDetails(session?.identifier)
 
   const allMedia = getAllMedia()
   const admins = getAdmins()
@@ -127,7 +130,10 @@ export default async function WebAdminStudioPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 space-y-10">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 space-y-8">
+        {/* Admin Identity Banner */}
+        <AdminProfileBanner admin={adminProfile} currentView="web" />
+
         {/* Metric Cards */}
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">

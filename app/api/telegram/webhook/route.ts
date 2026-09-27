@@ -15,6 +15,11 @@ import { getSponsorChannels, checkChannelSubscription } from "@/lib/admin-store"
 import { generateAdminSignature } from "@/lib/admin-auth"
 import { parseTelegramMediaPost, saveMediaDraft, getMediaDraft, deleteMediaDraft } from "@/lib/media-parser"
 import { addMediaItem } from "@/lib/anime-store"
+import {
+  getActiveSessionForUser,
+  updateUploadSession,
+  setActiveSessionForUser,
+} from "@/lib/telegram-upload-sync"
 
 type TelegramChat = { id: number | string; first_name?: string; username?: string; type?: string }
 type TelegramUser = { id: number; first_name: string; username?: string }
@@ -800,6 +805,25 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       fileId: detectedMediaFileId || parsed.fileId,
     })
 
+    // Check if user has an active Web Sync Session
+    const activeUploadSession = getActiveSessionForUser(chatId)
+    let syncNotice = ""
+    if (activeUploadSession) {
+      updateUploadSession(activeUploadSession.sessionId, {
+        videoFileId: detectedMediaFileId || parsed.fileId,
+        photoFileId: photoFileId,
+        title: parsed.title,
+        year: parsed.year,
+        rating: parsed.rating,
+        quality: parsed.quality,
+        duration: parsed.duration,
+        genres: parsed.genres,
+        synopsis: parsed.synopsis,
+        type: parsed.type,
+      })
+      syncNotice = `\n⚡ <b>Saytdagi boshqaruv paneli bilan sinxronlandi!</b>\nSaytga qaytsangiz, barcha maydonlar avtomatik to'ldirilgan bo'ladi.\n`
+    }
+
     const cardText = [
       `📥 <b>Yangi kino/anime posti aniqlandi!</b>`,
       ``,
@@ -808,7 +832,7 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       `🎭 <b>Janrlar:</b> ${parsed.genres.join(", ")}`,
       `⏳ <b>Davomiyligi:</b> ${parsed.duration}`,
       `📁 <b>File ID:</b> <code>${parsed.fileId || "Biriktirilmagan"}</code>`,
-      ``,
+      syncNotice,
       `📝 <b>Tavsif:</b> <i>${parsed.synopsis.slice(0, 130)}...</i>`,
       ``,
       `Quyidagi tugmalardan birini bosing:`,
@@ -848,9 +872,28 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
     return
   }
 
-  // Start command (with deep linking support, e.g. /start admin)
+  // Start command (with deep linking support, e.g. /start admin, /start upload_...)
   if (lower.startsWith("/start")) {
     const payload = lower.replace("/start", "").trim()
+
+    // 1. Upload live sync
+    if (payload.startsWith("upload_")) {
+      const sessionId = payload.replace("upload_", "").trim()
+      setActiveSessionForUser(chatId, sessionId)
+      await sendTelegramMessage(
+        chatId,
+        `🚀 <b>Sayt bilan jonli sinxronizatsiya faollashdi!</b>\n\nSessiya ID: <code>${sessionId}</code>\n\nEndi kino yoki animening <b>videosini</b> yoki <b>postini</b> shu yerga yuboring (yoki kanaldan forward qiling).\n\nFayl kelishi bilan saytda avtomatik to'ldiriladi!`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📱 Mini Appni ochish", web_app: { url: `${siteUrl}/admin/tg` } }],
+            ],
+          },
+        }
+      )
+      return
+    }
+
     if (payload === "admin" || payload.startsWith("admin_")) {
       await sendAdminPanel(chatId, firstName, siteUrl)
       return

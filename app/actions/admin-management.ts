@@ -32,20 +32,49 @@ export async function createMediaAction(formData: FormData) {
   const backdrop = String(formData.get("backdrop") || "/images/hero-1.png").trim()
   const telegramFileId = String(formData.get("telegramFileId") || "").trim()
   const totalEpisodes = parseInt(String(formData.get("totalEpisodes") || "1"), 10)
+  const episodesJson = String(formData.get("episodesJson") || "").trim()
+  const season = parseInt(String(formData.get("season") || "1"), 10)
+  const animeStatus = String(formData.get("animeStatus") || "ongoing") as "ongoing" | "completed"
+  const dubbingStudio = String(formData.get("dubbingStudio") || "AnimeDub").trim()
 
   if (!title) throw new Error("Film yoki anime nomi kiritilishi shart")
 
   const episodes = []
   if (type === "anime" || type === "series") {
-    for (let i = 1; i <= Math.min(totalEpisodes, 24); i++) {
-      episodes.push({
-        id: `ep-${i}`,
-        episodeNumber: i,
-        title: `${i}-qism`,
-        duration: "24 daq",
-        quality: quality === "4K" ? ("4K" as const) : ("1080p" as const),
-        telegramFileId: i === 1 ? telegramFileId : undefined,
-      })
+    let parsedCustomEps: any[] | null = null
+    if (episodesJson) {
+      try {
+        const parsed = JSON.parse(episodesJson)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsedCustomEps = parsed
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (parsedCustomEps && parsedCustomEps.length > 0) {
+      for (const ep of parsedCustomEps) {
+        episodes.push({
+          id: `ep-${ep.episodeNumber}`,
+          episodeNumber: ep.episodeNumber,
+          title: ep.title || `${ep.episodeNumber}-qism`,
+          duration: ep.duration || "24 daq",
+          quality: quality === "4K" ? ("4K" as const) : ("1080p" as const),
+          telegramFileId: ep.fileId || undefined,
+        })
+      }
+    } else {
+      for (let i = 1; i <= Math.min(totalEpisodes, 24); i++) {
+        episodes.push({
+          id: `ep-${i}`,
+          episodeNumber: i,
+          title: `${i}-qism`,
+          duration: "24 daq",
+          quality: quality === "4K" ? ("4K" as const) : ("1080p" as const),
+          telegramFileId: i === 1 ? telegramFileId : undefined,
+        })
+      }
     }
   } else {
     episodes.push({
@@ -73,7 +102,10 @@ export async function createMediaAction(formData: FormData) {
     cast: ["OneMedia Ijodiy Guruhi"],
     quality,
     featured: true,
-    totalEpisodes,
+    totalEpisodes: type === "anime" ? (episodes.length || totalEpisodes) : 1,
+    season: type === "anime" ? season : undefined,
+    animeStatus: type === "anime" ? animeStatus : undefined,
+    dubbingStudio: type === "anime" ? dubbingStudio : undefined,
     episodes,
   })
 

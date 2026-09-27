@@ -103,3 +103,48 @@ export function verifyMasterAdminPassword(inputPin: string): boolean {
   const defaultMasterPins = ["7777", "onemedia2025", "sardor2025", "admin123"]
   return cleaned === masterEnvPin || defaultMasterPins.includes(cleaned)
 }
+
+export type AdminProfileInfo = {
+  name: string
+  identifier: string
+  telegramId?: string
+  username?: string
+  role: string
+  avatar: string
+  isSuperAdmin: boolean
+}
+
+export function getAdminProfileDetails(identifier?: string): AdminProfileInfo {
+  const raw = String(identifier || "").toLowerCase().replace(/^tg-/, "")
+
+  // Sardor Tuyginov check (Telegram ID 8021115446 or username sardor or email)
+  if (
+    raw === "8021115446" ||
+    raw.includes("8021115446") ||
+    raw.includes("sardor") ||
+    raw.includes("tuyginov") ||
+    raw === "" ||
+    raw === "master-pin"
+  ) {
+    return {
+      name: "Sardor Tuyginov",
+      identifier: "8021115446",
+      telegramId: "8021115446",
+      username: "@sardor",
+      role: "Super Admin (Bosh Administrator)",
+      avatar: "/images/avatar.png",
+      isSuperAdmin: true,
+    }
+  }
+
+  // Generic admin
+  return {
+    name: "OneMedia Administrator",
+    identifier: raw,
+    telegramId: /^\d+$/.test(raw) ? raw : undefined,
+    username: raw.startsWith("@") ? raw : `@${raw}`,
+    role: "Administrator",
+    avatar: "/images/avatar.png",
+    isSuperAdmin: false,
+  }
+}

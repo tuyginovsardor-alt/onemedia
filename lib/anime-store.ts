@@ -29,6 +29,9 @@ export type MediaItem = {
   quality: "4K" | "FHD" | "HD"
   featured?: boolean
   totalEpisodes?: number
+  season?: number
+  animeStatus?: "ongoing" | "completed"
+  dubbingStudio?: string
   episodes: Episode[]
   telegramStorageId?: string
   addedAt: string
