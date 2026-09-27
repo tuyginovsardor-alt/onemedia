@@ -13,15 +13,26 @@ import { movies, genres, getMovie, getFeatured, byGenre } from "@/lib/movies"
 import { getAllMedia, getMediaById } from "@/lib/anime-store"
 import { getSponsorChannels, checkChannelSubscription } from "@/lib/admin-store"
 import { generateAdminSignature } from "@/lib/admin-auth"
+import { parseTelegramMediaPost, saveMediaDraft, getMediaDraft, deleteMediaDraft } from "@/lib/media-parser"
+import { addMediaItem } from "@/lib/anime-store"
 
 type TelegramChat = { id: number | string; first_name?: string; username?: string; type?: string }
 type TelegramUser = { id: number; first_name: string; username?: string }
+type TelegramPhoto = { file_id: string; width: number; height: number }
+type TelegramVideo = { file_id: string; duration: number; file_name?: string }
+type TelegramDocument = { file_id: string; file_name?: string; mime_type?: string }
 
 type TelegramMessage = {
   message_id: number
   chat: TelegramChat
   from?: TelegramUser
   text?: string
+  caption?: string
+  video?: TelegramVideo
+  photo?: TelegramPhoto[]
+  document?: TelegramDocument
+  forward_from?: TelegramUser
+  forward_from_chat?: { id: number; title?: string; username?: string; type: string }
 }
 
 type TelegramCallbackQuery = {
@@ -692,18 +703,137 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       return
     }
 
+    if (data.startsWith("draft:save:")) {
+      const parts = data.split(":")
+      const mediaType = parts[2] as "movie" | "anime"
+      const draftId = parts[3]
+      const draft = getMediaDraft(draftId)
+
+      if (!draft) {
+        await answerTelegramCallbackQuery(cb.id, "⚠️ Qoralama topilmadi yoki muddati o'tgan.", true)
+        return
+      }
+
+      const newMedia = addMediaItem({
+        title: draft.title,
+        type: mediaType,
+        year: draft.year,
+        rating: draft.rating,
+        duration: draft.duration,
+        ageRating: "16+",
+        genres: draft.genres,
+        poster: "/images/poster-1.png",
+        backdrop: "/images/hero-1.png",
+        synopsis: draft.synopsis,
+        director: "OneMedia Studio",
+        cast: ["OneMedia Ijodiy Guruhi"],
+        quality: draft.quality,
+        featured: true,
+        totalEpisodes: mediaType === "anime" ? (draft.totalEpisodes || 12) : 1,
+        episodes: [
+          {
+            id: `${draftId}-ep1`,
+            episodeNumber: 1,
+            title: mediaType === "anime" ? "1-qism" : "To'liq film",
+            duration: draft.duration,
+            quality: draft.quality === "4K" ? "4K" : "1080p",
+            telegramFileId: draft.fileId,
+          },
+        ],
+      })
+
+      deleteMediaDraft(draftId)
+      await answerTelegramCallbackQuery(cb.id, `✅ «${draft.title}» bazaga qo'shildi!`, false)
+
+      if (cb.message) {
+        await editTelegramMessageText(
+          chatId,
+          cb.message.message_id,
+          `🎉 <b>«${newMedia.title}» muvaffaqiyatli bazaga qo'shildi!</b>\n\n• Turi: <b>${mediaType === "anime" ? "Anime" : "Film"}</b>\n• Sifati: <b>${newMedia.quality}</b>\n• File ID: <code>${draft.fileId || "Mavjud"}</code>\n\nEndi bot va saytda tomosha qilish mumkin.`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🎬 Kinoni ochish", callback_data: `movie:${newMedia.id}` }],
+                [{ text: "👑 Admin panel", callback_data: "admin:panel" }],
+              ],
+            },
+          }
+        )
+      }
+      return
+    }
+
+    if (data.startsWith("draft:cancel:")) {
+      const draftId = data.replace("draft:cancel:", "")
+      deleteMediaDraft(draftId)
+      await answerTelegramCallbackQuery(cb.id, "Bekor qilindi", false)
+      if (cb.message) {
+        await editTelegramMessageText(chatId, cb.message.message_id, "❌ Postni bazaga qo'shish bekor qilindi.")
+      }
+      return
+    }
+
     await answerTelegramCallbackQuery(cb.id)
     return
   }
 
-  // 3. Handle Regular Messages
+  // 3. Handle Regular Messages & Forwarded Media
   const message = update.message
-  if (!message?.text) return
+  if (!message) return
 
-  const text = message.text.trim()
-  const lower = text.toLowerCase()
   const chatId = message.chat.id
   const firstName = message.from?.first_name || "do‘st"
+
+  // Check incoming video, photo, document, or forwarded post
+  const videoFileId = message.video?.file_id
+  const docFileId = message.document?.file_id
+  const photoFileId = message.photo && message.photo.length > 0 ? message.photo[message.photo.length - 1].file_id : undefined
+  const detectedMediaFileId = videoFileId || docFileId || photoFileId
+  const rawText = (message.text || message.caption || "").trim()
+
+  // If user forwarded a video/photo/doc or post containing movie details
+  if (detectedMediaFileId || message.forward_from_chat || (rawText.length > 15 && (rawText.includes("🎬") || rawText.includes("BAACAg") || rawText.toLowerCase().includes("reyting") || rawText.toLowerCase().includes("janr")))) {
+    const parsed = parseTelegramMediaPost(rawText, detectedMediaFileId)
+    const draft = saveMediaDraft({
+      ...parsed,
+      chatId,
+      fileId: detectedMediaFileId || parsed.fileId,
+    })
+
+    const cardText = [
+      `📥 <b>Yangi kino/anime posti aniqlandi!</b>`,
+      ``,
+      `🎬 <b>Nomi:</b> ${parsed.title} (${parsed.year})`,
+      `⭐ <b>Reyting:</b> ${parsed.rating} | 🎞️ <b>Sifat:</b> ${parsed.quality}`,
+      `🎭 <b>Janrlar:</b> ${parsed.genres.join(", ")}`,
+      `⏳ <b>Davomiyligi:</b> ${parsed.duration}`,
+      `📁 <b>File ID:</b> <code>${parsed.fileId || "Biriktirilmagan"}</code>`,
+      ``,
+      `📝 <b>Tavsif:</b> <i>${parsed.synopsis.slice(0, 130)}...</i>`,
+      ``,
+      `Quyidagi tugmalardan birini bosing:`,
+    ].join("\n")
+
+    const draftButtons = [
+      [
+        { text: "🎬 Film sifatida qo'shish", callback_data: `draft:save:movie:${draft.id}` },
+        { text: "🎭 Anime sifatida qo'shish", callback_data: `draft:save:anime:${draft.id}` },
+      ],
+      [
+        { text: "📱 Mini Appda ochish", web_app: { url: `${siteUrl}/admin/tg` } },
+        { text: "❌ Bekor qilish", callback_data: `draft:cancel:${draft.id}` },
+      ],
+    ]
+
+    await sendTelegramMessage(chatId, cardText, {
+      reply_markup: { inline_keyboard: draftButtons },
+    })
+    return
+  }
+
+  if (!rawText) return
+  const text = rawText
+  const lower = text.toLowerCase()
 
   // Admin command
   if (lower === "/admin" || lower === "admin" || lower === "/panel" || lower === "/stats" || lower === "👑 admin" || lower === "admin panel") {

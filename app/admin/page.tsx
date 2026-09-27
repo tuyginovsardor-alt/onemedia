@@ -43,6 +43,7 @@ import {
 import { verifyAdminSignature, getAdminSessionFromCookie, setAdminSessionCookie } from "@/lib/admin-auth"
 import { AdminAuthGate } from "@/components/admin-auth-gate"
 import { logoutAdminAction } from "@/app/actions/admin-auth-actions"
+import { SmartMediaAdder } from "@/components/smart-media-adder"
 
 export default async function WebAdminStudioPage({
   searchParams,
@@ -187,120 +188,8 @@ export default async function WebAdminStudioPage({
             </div>
           </div>
 
-          {/* Add Media Form */}
-          <form action={createMediaAction} className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.03] p-5 space-y-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">Yangi Film / Anime qo&apos;shish</p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Nomi</label>
-                <input
-                  name="title"
-                  required
-                  placeholder="masalan: Solo Leveling"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Turi</label>
-                <select
-                  name="type"
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                >
-                  <option value="anime">Anime (Serial)</option>
-                  <option value="movie">Film</option>
-                  <option value="series">Serial</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Sifat darajasi</label>
-                <select
-                  name="quality"
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                >
-                  <option value="4K">4K Ultra HD</option>
-                  <option value="FHD">Full HD 1080p</option>
-                  <option value="HD">HD 720p</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-4">
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Yili</label>
-                <input
-                  name="year"
-                  type="number"
-                  defaultValue={2025}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Reyting (1-10)</label>
-                <input
-                  name="rating"
-                  type="number"
-                  step="0.1"
-                  defaultValue={8.9}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Davomiyligi</label>
-                <input
-                  name="duration"
-                  defaultValue="24 daq / qism"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Qismlar soni</label>
-                <input
-                  name="totalEpisodes"
-                  type="number"
-                  defaultValue={12}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Janrlar (vergul bilan)</label>
-                <input
-                  name="genres"
-                  defaultValue="Anime, Fantastika, Jangari"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Telegram Storage File ID</label>
-                <input
-                  name="telegramFileId"
-                  placeholder="Telegram File ID (masalan: BAACAgIAAxkBAAE...)"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-mono text-cyan-300"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-white/70 block mb-1">Tavsif (Synopsis)</label>
-              <textarea
-                name="synopsis"
-                rows={2}
-                placeholder="Film yoki anime haqida qisqacha ma'lumot..."
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="rounded-xl bg-cyan-400 px-5 py-2.5 text-xs font-bold text-slate-950 hover:bg-cyan-300 flex items-center gap-1.5 shadow-lg shadow-cyan-400/20"
-            >
-              <Plus className="h-4 w-4" /> Bazaga qo&apos;shish
-            </button>
-          </form>
+          {/* Smart Media Adder with Auto-Parser & Bulk Anime Ingestion */}
+          <SmartMediaAdder />
 
           {/* Media Table */}
           <div className="overflow-x-auto rounded-xl border border-white/10">

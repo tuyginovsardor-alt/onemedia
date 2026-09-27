@@ -39,6 +39,7 @@ import {
 import { verifyAdminSignature, getAdminSessionFromCookie, setAdminSessionCookie } from "@/lib/admin-auth"
 import { AdminAuthGate } from "@/components/admin-auth-gate"
 import { logoutAdminAction } from "@/app/actions/admin-auth-actions"
+import { SmartMediaAdder } from "@/components/smart-media-adder"
 
 export default async function TelegramAdminAppPage({
   searchParams,
@@ -223,118 +224,9 @@ export default async function TelegramAdminAppPage({
           )}
         </section>
 
-        {/* 2. Add New Anime / Movie */}
-        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-1.5 mb-2">
-            <Tv className="h-4 w-4 text-cyan-400" /> Yangi Anime yoki Film qo&apos;shish
-          </h2>
-          <p className="text-[11px] text-white/50 mb-3">
-            Telegram File ID kiritilsa, bot va pleyer uni to&apos;g&apos;ridan-to&apos;g&apos;ri 4K oqim bilan uzatadi.
-          </p>
-
-          <form action={createMediaAction} className="space-y-2.5">
-            <div>
-              <label className="text-[11px] text-white/60 block mb-1">Nomi:</label>
-              <input
-                name="title"
-                required
-                placeholder="masalan: Solo Leveling 2-mavsum"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] text-white/60 block mb-1">Turi:</label>
-                <select
-                  name="type"
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                >
-                  <option value="anime">Anime</option>
-                  <option value="movie">Film</option>
-                  <option value="series">Serial</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] text-white/60 block mb-1">Sifati:</label>
-                <select
-                  name="quality"
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                >
-                  <option value="4K">4K Ultra HD</option>
-                  <option value="FHD">Full HD 1080p</option>
-                  <option value="HD">HD 720p</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-[11px] text-white/60 block mb-1">Yili:</label>
-                <input
-                  name="year"
-                  type="number"
-                  defaultValue={2025}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-white/60 block mb-1">Reyting:</label>
-                <input
-                  name="rating"
-                  type="number"
-                  step="0.1"
-                  defaultValue={8.8}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-white/60 block mb-1">Qismlar soni:</label>
-                <input
-                  name="totalEpisodes"
-                  type="number"
-                  defaultValue={12}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[11px] text-white/60 block mb-1">Janrlar (vergul bilan):</label>
-              <input
-                name="genres"
-                defaultValue="Anime, Jangari, Fantastika"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] text-white/60 block mb-1">Telegram File ID (Storage):</label>
-              <input
-                name="telegramFileId"
-                placeholder="Telegram video file_id (ixtiyoriy)"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-mono text-cyan-300 placeholder-white/30 focus:border-cyan-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] text-white/60 block mb-1">Tavsif (Synopsis):</label>
-              <textarea
-                name="synopsis"
-                rows={2}
-                placeholder="Qisqacha mazmuni..."
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-cyan-400 py-2.5 text-xs font-extrabold text-slate-950 flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-cyan-400/20"
-            >
-              <Plus className="h-4 w-4" /> Bazaga qo&apos;shish
-            </button>
-          </form>
+        {/* 2. Add New Anime / Movie with Smart Media Adder */}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+          <SmartMediaAdder />
         </section>
 
         {/* 3. Mandatory Channels (Sponsors) */}
