@@ -10,6 +10,8 @@ import {
   getBotMe,
 } from "@/lib/telegram"
 import { movies, genres, getMovie, getFeatured, byGenre } from "@/lib/movies"
+import { getAllMedia, getMediaById } from "@/lib/anime-store"
+import { getSponsorChannels, checkChannelSubscription } from "@/lib/admin-store"
 
 type TelegramChat = { id: number | string; first_name?: string; username?: string; type?: string }
 type TelegramUser = { id: number; first_name: string; username?: string }
@@ -323,6 +325,23 @@ async function sendSeriesAndCartoons(chatId: number | string, siteUrl: string) {
   })
 }
 
+// Check mandatory sponsor subscriptions
+async function verifyUserSubscription(chatId: number | string): Promise<{ subscribed: boolean; unjoinedChannel?: string; inviteLink?: string; channelTitle?: string }> {
+  const sponsors = getSponsorChannels().filter((s) => s.required)
+  for (const sp of sponsors) {
+    const isSub = await checkChannelSubscription(sp.username, chatId)
+    if (!isSub) {
+      return {
+        subscribed: false,
+        unjoinedChannel: sp.username,
+        inviteLink: sp.inviteLink,
+        channelTitle: sp.title,
+      }
+    }
+  }
+  return { subscribed: true }
+}
+
 // Send Admin Panel
 async function sendAdminPanel(chatId: number | string, firstName = "Admin", siteUrl: string) {
   let webhookInfo: { url: string; pending_update_count: number; last_error_message?: string } | null = null
@@ -332,34 +351,38 @@ async function sendAdminPanel(chatId: number | string, firstName = "Admin", site
     // ignore
   }
 
+  const allMedia = getAllMedia()
+  const animeCount = allMedia.filter((m) => m.type === "anime").length
+
   const text = [
-    `👑 <b>OneMedia — Admin Boshqaruv Paneli</b>`,
+    `👑 <b>OneMedia — Admin Boshqaruv Markazi</b>`,
     ``,
     `Assalomu alaykum, <b>${firstName}</b>!`,
     ``,
-    `📊 <b>Tizim statistikasi:</b>`,
-    `• 🎬 Filmlar bazasi: <b>${movies.length} ta film</b>`,
-    `• 🎭 Janrlar: <b>${genres.length - 1} ta janr</b>`,
-    `• 🌐 Asosiy domen: <code>onemedia-mocha.vercel.app</code>`,
+    `📊 <b>Jonli statistika:</b>`,
+    `• 🎬 Filmlar & Animelar: <b>${allMedia.length} ta</b> (${animeCount} ta anime)`,
     `• 🤖 Bot: <b>@onemediahd_bot</b>`,
+    `• 🌐 Asosiy domen: <code>onemedia-mocha.vercel.app</code>`,
     `• 📡 Webhook: <b>${webhookInfo?.url ? "🟢 Ulangan" : "🟡 Ulanmagan"}</b>`,
     `• ⏳ Kutilayotgan so'rovlar: <b>${webhookInfo?.pending_update_count ?? 0} ta</b>`,
-    ...(webhookInfo?.last_error_message ? [`• ⚠️ Oxirgi xato: <code>${webhookInfo.last_error_message}</code>`] : []),
     ``,
-    `⚡ <b>Boshqaruv bo'limlari:</b>`,
+    `Kerakli admin panelni tanlang:`,
   ].join("\n")
 
   const buttons = [
     [
-      { text: "🌐 Veb Admin Panel", web_app: { url: `${siteUrl}/admin/telegram` } },
+      { text: "📱 Telegram Admin Panel (Mini App)", web_app: { url: `${siteUrl}/admin/tg` } },
+    ],
+    [
+      { text: "💻 Web Studio (To'liq Dashboard)", url: `${siteUrl}/admin` },
       { text: "⚙️ Webhook sozlamalari", url: `${siteUrl}/api/telegram/setup` },
     ],
     [
-      { text: "🎬 Barcha kinolar ro'yxati (12 ta)", callback_data: "admin:movies_list" },
+      { text: "🎬 Barcha kinolar & Anime ro'yxati", callback_data: "admin:movies_list" },
     ],
     [
       { text: "🔄 Webhookni tekshirish", callback_data: "admin:check_webhook" },
-      { text: "📢 Kanalga post / Ulashish", callback_data: "admin:broadcast_info" },
+      { text: "📢 Kanalga ulashish (Inline)", callback_data: "admin:broadcast_info" },
     ],
     [
       { text: "🏠 Foydalanuvchi menyusi", callback_data: "menu:main" },
@@ -372,16 +395,39 @@ async function sendAdminPanel(chatId: number | string, firstName = "Admin", site
 }
 
 // Send a single movie card
-async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: string) {
-  const movie = getMovie(movieId)
+async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: string, skipSubCheck = false) {
+  if (!skipSubCheck) {
+    const subCheck = await verifyUserSubscription(chatId)
+    if (!subCheck.subscribed) {
+      const text = [
+        `⚠️ <b>Filmni 4K sifatda tomosha qilish uchun homiy kanalimizga a'zo bo'ling:</b>`,
+        ``,
+        `📢 Kanal: <b>${subCheck.channelTitle || subCheck.unjoinedChannel}</b>`,
+        ``,
+        `Kanalga a'zo bo'lib, quyidagi <b>«✅ A'zo bo'ldim (Tekshirish)»</b> tugmasini bosing:`,
+      ].join("\n")
+
+      await sendTelegramMessage(chatId, text, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: `📢 ${subCheck.channelTitle || "Kanalga a'zo bo'lish"}`, url: subCheck.inviteLink || `https://t.me/${subCheck.unjoinedChannel?.replace("@", "")}` }],
+            [{ text: "✅ A'zo bo'ldim (Tekshirish)", callback_data: `check_sub:${movieId}` }],
+          ],
+        },
+      })
+      return
+    }
+  }
+
+  const movie = getMediaById(movieId) || getMovie(movieId)
   if (!movie) {
-    await sendTelegramMessage(chatId, "Kechirasiz, ushbu film topilmadi yoki o'chirilgan.")
+    await sendTelegramMessage(chatId, "Kechirasiz, ushbu film yoki anime topilmadi.")
     return
   }
 
-  const caption = formatMovieCard(movie)
+  const caption = formatMovieCard(movie as any)
   const posterUrl = getPosterUrl(siteUrl, movie.poster)
-  const keyboard = getMovieInlineKeyboard(siteUrl, movie)
+  const keyboard = getMovieInlineKeyboard(siteUrl, movie as any)
 
   await sendTelegramPhoto(chatId, posterUrl, caption, {
     reply_markup: keyboard,
@@ -539,6 +585,18 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       const movieId = data.replace("fav:", "")
       const movie = getMovie(movieId)
       await answerTelegramCallbackQuery(cb.id, `⭐ «${movie?.title}» sevimlilarga qo'shildi!`, true)
+      return
+    }
+
+    if (data.startsWith("check_sub:")) {
+      const movieId = data.replace("check_sub:", "")
+      const subCheck = await verifyUserSubscription(chatId)
+      if (!subCheck.subscribed) {
+        await answerTelegramCallbackQuery(cb.id, "⚠️ Siz hali kanalga a'zo bo'lmadingiz! Iltimos, a'zo bo'ling.", true)
+        return
+      }
+      await answerTelegramCallbackQuery(cb.id, "✅ Rahmat! Obuna tasdiqlandi.", false)
+      await sendMovieCard(chatId, movieId, siteUrl, true)
       return
     }
 

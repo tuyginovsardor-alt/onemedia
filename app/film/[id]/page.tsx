@@ -5,14 +5,15 @@ import { Star, Plus, Share2, Download, Send } from 'lucide-react'
 import { VideoPlayer } from "@/components/video-player"
 import { MovieCard } from "@/components/movie-card"
 import { getMovie, movies } from "@/lib/movies"
+import { getMediaById, getAllMedia } from "@/lib/anime-store"
 
 export function generateStaticParams() {
-  return movies.map((m) => ({ id: m.id }))
+  return getAllMedia().map((m) => ({ id: m.id }))
 }
 
 export default async function FilmPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const movie = getMovie(id)
+  const movie = getMediaById(id) || getMovie(id)
   if (!movie) notFound()
 
   const similar = movies
@@ -97,8 +98,13 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
 
         {/* Player */}
         <div id="player" className="mt-12 scroll-mt-20 space-y-4">
-          <h2 className="font-display text-2xl font-bold text-white">Onlayn ko'rish</h2>
-          <VideoPlayer poster={movie.backdrop} title={movie.title} />
+          <h2 className="font-display text-2xl font-bold text-white">Onlayn ko&apos;rish</h2>
+          <VideoPlayer
+            poster={movie.backdrop}
+            title={movie.title}
+            mediaId={movie.id}
+            episodes={(movie as any).episodes}
+          />
           <div className="flex flex-col items-start gap-3 rounded-2xl glass p-4 ring-1 ring-white/10 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-white/70">
               To'liq versiyani Telegram bot orqali ham ko'rishingiz mumkin.
