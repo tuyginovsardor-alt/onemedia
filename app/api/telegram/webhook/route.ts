@@ -12,6 +12,7 @@ import {
 import { movies, genres, getMovie, getFeatured, byGenre } from "@/lib/movies"
 import { getAllMedia, getMediaById } from "@/lib/anime-store"
 import { getSponsorChannels, checkChannelSubscription } from "@/lib/admin-store"
+import { generateAdminSignature } from "@/lib/admin-auth"
 
 type TelegramChat = { id: number | string; first_name?: string; username?: string; type?: string }
 type TelegramUser = { id: number; first_name: string; username?: string }
@@ -366,15 +367,20 @@ async function sendAdminPanel(chatId: number | string, firstName = "Admin", site
     `• 📡 Webhook: <b>${webhookInfo?.url ? "🟢 Ulangan" : "🟡 Ulanmagan"}</b>`,
     `• ⏳ Kutilayotgan so'rovlar: <b>${webhookInfo?.pending_update_count ?? 0} ta</b>`,
     ``,
-    `Kerakli admin panelni tanlang:`,
+    `🔐 <i>Havolalar SHA-256 xavfsizlik imzosi bilan himoyalangan.</i>`,
   ].join("\n")
+
+  const ts = Date.now()
+  const sig = generateAdminSignature(String(chatId), ts, "super_admin")
+  const signedTgUrl = `${siteUrl}/admin/tg?uid=${chatId}&ts=${ts}&sig=${sig}`
+  const signedWebUrl = `${siteUrl}/admin?uid=${chatId}&ts=${ts}&sig=${sig}`
 
   const buttons = [
     [
-      { text: "📱 Telegram Admin Panel (Mini App)", web_app: { url: `${siteUrl}/admin/tg` } },
+      { text: "📱 Telegram Admin Panel (Mini App)", web_app: { url: signedTgUrl } },
     ],
     [
-      { text: "💻 Web Studio (To'liq Dashboard)", url: `${siteUrl}/admin` },
+      { text: "💻 Web Studio (To'liq Dashboard)", url: signedWebUrl },
       { text: "⚙️ Webhook sozlamalari", url: `${siteUrl}/api/telegram/setup` },
     ],
     [

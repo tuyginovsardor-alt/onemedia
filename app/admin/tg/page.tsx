@@ -34,9 +34,42 @@ import {
   ExternalLink,
   ShieldCheck,
   Sparkles,
+  LogOut,
 } from 'lucide-react'
+import { verifyAdminSignature, getAdminSessionFromCookie, setAdminSessionCookie } from "@/lib/admin-auth"
+import { AdminAuthGate } from "@/components/admin-auth-gate"
+import { logoutAdminAction } from "@/app/actions/admin-auth-actions"
 
-export default async function TelegramAdminAppPage() {
+export default async function TelegramAdminAppPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ uid?: string; ts?: string; sig?: string }>
+}) {
+  const { uid, ts, sig } = await searchParams
+  let isAuthenticated = false
+
+  // 1. SHA-256 Token from Telegram query
+  if (uid && ts && sig) {
+    const timestamp = parseInt(ts, 10)
+    if (!isNaN(timestamp) && verifyAdminSignature(uid, timestamp, sig)) {
+      await setAdminSessionCookie(`tg-${uid}`, "super_admin")
+      isAuthenticated = true
+    }
+  }
+
+  // 2. 30-day Cookie Session Cache
+  if (!isAuthenticated) {
+    const session = await getAdminSessionFromCookie()
+    if (session?.authenticated) {
+      isAuthenticated = true
+    }
+  }
+
+  // 3. Block unauthorized access with AdminAuthGate
+  if (!isAuthenticated) {
+    return <AdminAuthGate returnUrl="/admin/tg" />
+  }
+
   const allMedia = getAllMedia()
   const admins = getAdmins()
   const sponsors = getSponsorChannels()
@@ -71,6 +104,17 @@ export default async function TelegramAdminAppPage() {
           >
             Veb Studio <ExternalLink className="h-3 w-3" />
           </Link>
+          <form action={async () => {
+            'use server'
+            await logoutAdminAction("/admin/tg")
+          }}>
+            <button
+              type="submit"
+              className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] font-semibold text-red-400 hover:bg-red-500/20"
+            >
+              Chiqish
+            </button>
+          </form>
         </div>
       </div>
 
