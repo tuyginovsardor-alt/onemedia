@@ -37,10 +37,25 @@ let globalAdmins: AdminUser[] = [
     addedAt: "2026-01-01T00:00:00.000Z",
   },
   {
+    id: "admin-sardor-tg-id",
+    name: "Sardor Tuyginov (Telegram ID)",
+    type: "telegram",
+    identifier: "8021115446",
+    role: "super_admin",
+    permissions: {
+      manageMovies: true,
+      managePayments: true,
+      broadcast: true,
+      manageSponsors: true,
+      manageAdmins: true,
+    },
+    addedAt: "2026-01-01T00:00:00.000Z",
+  },
+  {
     id: "admin-sardor-tg",
     name: "Sardor Tuyginov (Telegram)",
     type: "telegram",
-    identifier: "onemediahd_bot",
+    identifier: "sardor",
     role: "super_admin",
     permissions: {
       manageMovies: true,

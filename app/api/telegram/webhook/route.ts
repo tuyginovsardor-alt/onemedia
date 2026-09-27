@@ -383,8 +383,8 @@ async function sendAdminPanel(chatId: number | string, firstName = "Admin", site
 
   const ts = Date.now()
   const sig = generateAdminSignature(String(chatId), ts, "super_admin")
-  const signedTgUrl = `${siteUrl}/admin/tg?uid=${chatId}&ts=${ts}&sig=${sig}`
-  const signedWebUrl = `${siteUrl}/admin?uid=${chatId}&ts=${ts}&sig=${sig}`
+  const signedTgUrl = `${siteUrl}/api/auth/admin-verify?uid=${chatId}&ts=${ts}&sig=${sig}&target=tg`
+  const signedWebUrl = `${siteUrl}/api/auth/admin-verify?uid=${chatId}&ts=${ts}&sig=${sig}&target=web`
 
   const buttons = [
     [

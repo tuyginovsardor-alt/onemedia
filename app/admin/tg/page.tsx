@@ -20,6 +20,7 @@ import {
   sendBroadcastAction,
 } from "@/app/actions/admin-management"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import {
   Film,
   Tv,
@@ -36,7 +37,7 @@ import {
   Sparkles,
   LogOut,
 } from 'lucide-react'
-import { verifyAdminSignature, getAdminSessionFromCookie, setAdminSessionCookie } from "@/lib/admin-auth"
+import { verifyAdminSignature, getAdminSessionFromCookie } from "@/lib/admin-auth"
 import { AdminAuthGate } from "@/components/admin-auth-gate"
 import { logoutAdminAction } from "@/app/actions/admin-auth-actions"
 import { SmartMediaAdder } from "@/components/smart-media-adder"
@@ -47,24 +48,15 @@ export default async function TelegramAdminAppPage({
   searchParams: Promise<{ uid?: string; ts?: string; sig?: string }>
 }) {
   const { uid, ts, sig } = await searchParams
-  let isAuthenticated = false
 
-  // 1. SHA-256 Token from Telegram query
+  // 1. If SHA-256 Token from Telegram query, redirect to Route Handler to set cookie safely
   if (uid && ts && sig) {
-    const timestamp = parseInt(ts, 10)
-    if (!isNaN(timestamp) && verifyAdminSignature(uid, timestamp, sig)) {
-      await setAdminSessionCookie(`tg-${uid}`, "super_admin")
-      isAuthenticated = true
-    }
+    redirect(`/api/auth/admin-verify?uid=${uid}&ts=${ts}&sig=${sig}&target=tg`)
   }
 
-  // 2. 30-day Cookie Session Cache
-  if (!isAuthenticated) {
-    const session = await getAdminSessionFromCookie()
-    if (session?.authenticated) {
-      isAuthenticated = true
-    }
-  }
+  // 2. Check 30-day Cookie Session Cache
+  const session = await getAdminSessionFromCookie()
+  const isAuthenticated = Boolean(session?.authenticated)
 
   // 3. Block unauthorized access with AdminAuthGate
   if (!isAuthenticated) {

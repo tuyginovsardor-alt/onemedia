@@ -1,12 +1,61 @@
 "use client"
 
-import { useState } from "react"
-import { ShieldCheck, Lock, Send, KeyRound, Sparkles, CheckCircle2 } from 'lucide-react'
+import { useEffect, useState } from "react"
+import { ShieldCheck, Send, KeyRound, Sparkles, CheckCircle2, UserCheck } from 'lucide-react'
 import { loginAdminWithPinAction } from "@/app/actions/admin-auth-actions"
+
+type TelegramUser = {
+  id: number
+  first_name: string
+  last_name?: string
+  username?: string
+}
 
 export function AdminAuthGate({ returnUrl = "/admin" }: { returnUrl?: string }) {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [tgUser, setTgUser] = useState<TelegramUser | null>(null)
+  const [pinValue, setPinValue] = useState("")
+
+  useEffect(() => {
+    try {
+      const tg = (window as any).Telegram?.WebApp
+      if (tg) {
+        tg.ready()
+        tg.expand()
+        const user = tg.initDataUnsafe?.user
+        if (user) {
+          setTgUser(user)
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  async function handleOneClickTelegramLogin() {
+    if (!tgUser) return
+    setLoading(true)
+    setError("")
+
+    try {
+      const res = await fetch("/api/auth/telegram-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tgUser),
+      })
+      const data = await res.json()
+      if (data.success) {
+        window.location.href = returnUrl
+      } else {
+        setError(data.error || "Ruxsat etilmadi")
+        setLoading(false)
+      }
+    } catch (err) {
+      setError((err as Error).message || "Kutilmagan xatolik yuz berdi")
+      setLoading(false)
+    }
+  }
 
   async function handlePinSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -22,12 +71,15 @@ export function AdminAuthGate({ returnUrl = "/admin" }: { returnUrl?: string }) 
         setLoading(false)
       }
     } catch (err) {
-      // In Next.js redirect throws, so if error is not NEXT_REDIRECT, show it
       if (!(err as Error).message?.includes("NEXT_REDIRECT")) {
         setError((err as Error).message || "Kirishda xatolik yuz berdi")
         setLoading(false)
       }
     }
+  }
+
+  function handleQuickFillPin() {
+    setPinValue("7777")
   }
 
   return (
@@ -52,43 +104,72 @@ export function AdminAuthGate({ returnUrl = "/admin" }: { returnUrl?: string }) 
             </div>
           )}
 
-          {/* Option 1: Telegram Bot 1-Click Auth */}
-          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.03] p-4 text-center space-y-2.5">
-            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-400">
-              <Send className="h-3.5 w-3.5" /> Telegram orqali 1 bosishda kirish
+          {/* Option 1: 1-Click Telegram WebApp Auth */}
+          {tgUser ? (
+            <div className="rounded-xl border border-cyan-400/40 bg-cyan-400/[0.08] p-4 text-center space-y-3">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-300">
+                <UserCheck className="h-4 w-4" /> Telegram hisobingiz aniqlandi
+              </div>
+              <p className="text-xs text-white/80 font-medium">
+                Assalomu alaykum, <b>{tgUser.first_name}</b> ({tgUser.username ? `@${tgUser.username}` : `ID: ${tgUser.id}`})
+              </p>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleOneClickTelegramLogin}
+                className="w-full rounded-xl bg-cyan-400 py-3 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 active:scale-95 transition shadow-lg shadow-cyan-400/20 disabled:opacity-50"
+              >
+                {loading ? "Kirilmoqda..." : "👑 Admin sifatida 1 bosishda kirish"}
+              </button>
             </div>
-            <p className="text-[11px] text-white/60">
-              Botimizda <b>/admin</b> buyrug&apos;ini yozsangiz, bot sizga SHA-256 bilan imzolangan maxsus kirish tugmasini beradi.
-            </p>
-            <a
-              href="https://t.me/onemediahd_bot?start=admin"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 transition shadow-lg shadow-cyan-400/20"
-            >
-              <Send className="h-3.5 w-3.5" /> Telegram Botda Ochish
-            </a>
-          </div>
+          ) : (
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.03] p-4 text-center space-y-2.5">
+              <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-cyan-400">
+                <Send className="h-3.5 w-3.5" /> Telegram orqali 1 bosishda kirish
+              </div>
+              <p className="text-[11px] text-white/60">
+                Botimizda <b>/admin</b> buyrug&apos;ini yozsangiz, bot sizga avtomatik kirish tugmasini beradi.
+              </p>
+              <a
+                href="https://t.me/onemediahd_bot?start=admin"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-cyan-300 transition shadow-lg shadow-cyan-400/20"
+              >
+                <Send className="h-3.5 w-3.5" /> Telegram Botda Ochish
+              </a>
+            </div>
+          )}
 
           <div className="relative flex items-center justify-center">
             <span className="h-px w-full bg-white/10" />
-            <span className="bg-[#0e1222] px-3 text-[10px] uppercase font-bold text-white/40 tracking-wider">YOKI PIN PAROL</span>
+            <span className="bg-[#0e1222] px-3 text-[10px] uppercase font-bold text-white/40 tracking-wider">
+              YOKI MASTER PIN
+            </span>
             <span className="h-px w-full bg-white/10" />
           </div>
 
           {/* Option 2: PIN / Password Form */}
           <form onSubmit={handlePinSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-white/70 block mb-1.5 flex items-center justify-between">
+              <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-white/70">
                 <span>Master PIN yoki Parol:</span>
-                <span className="text-[10px] text-cyan-400 font-mono">Standart: 7777</span>
-              </label>
+                <button
+                  type="button"
+                  onClick={handleQuickFillPin}
+                  className="text-[10px] text-cyan-400 font-mono underline hover:text-cyan-300"
+                >
+                  (7777 ni qo&apos;yish)
+                </button>
+              </div>
               <div className="relative">
                 <input
                   name="pin"
                   type="password"
                   required
-                  placeholder="Master PIN yoki parolni kiriting"
+                  value={pinValue}
+                  onChange={(e) => setPinValue(e.target.value)}
+                  placeholder="Master PIN (7777)"
                   className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-sm text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none"
                 />
                 <KeyRound className="absolute right-3 top-3 h-4 w-4 text-white/30" />
