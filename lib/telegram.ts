@@ -2,6 +2,18 @@ import { createHash } from "node:crypto"
 
 export const PRODUCTION_DOMAIN = "https://onemedia-mocha.vercel.app"
 
+export function normalizeWebhookUrl(input?: string | null): string {
+  if (!input) return `${PRODUCTION_DOMAIN}/api/telegram/webhook`
+  let url = input.trim().replace(/\/+$/, "")
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`
+  }
+  while (url.endsWith("/api/telegram/webhook")) {
+    url = url.slice(0, -"/api/telegram/webhook".length).replace(/\/+$/, "")
+  }
+  return `${url}/api/telegram/webhook`
+}
+
 export function getTelegramBotToken(): string {
   return process.env.TELEGRAM_BOT_TOKEN || ""
 }

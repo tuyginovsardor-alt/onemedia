@@ -5,7 +5,7 @@ import {
   getTelegramBotDetails,
   resolveCurrentSiteUrl,
 } from "@/app/actions/telegram"
-import { isTelegramConfigured, getTelegramBotToken, PRODUCTION_DOMAIN } from "@/lib/telegram"
+import { isTelegramConfigured, getTelegramBotToken, PRODUCTION_DOMAIN, normalizeWebhookUrl } from "@/lib/telegram"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -15,8 +15,8 @@ export async function GET(request: Request) {
 
   const siteUrl = await resolveCurrentSiteUrl()
   const configured = isTelegramConfigured()
-  const targetDomain = customUrl || (url.searchParams.get("domain") ? `https://${url.searchParams.get("domain")}` : PRODUCTION_DOMAIN)
-  const webhookUrl = `${targetDomain.replace(/\/$/, "")}/api/telegram/webhook`
+  const rawTarget = customUrl || (url.searchParams.get("domain") ? `https://${url.searchParams.get("domain")}` : PRODUCTION_DOMAIN)
+  const webhookUrl = normalizeWebhookUrl(rawTarget)
 
   let actionResult: { ok: boolean; message: string; data?: unknown } | null = null
 
@@ -309,7 +309,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   // Support POST request as well
   const body = await request.json().catch(() => ({}))
-  const targetUrl = body.url || "https://onemedia-mocha.vercel.app/api/telegram/webhook"
+  const targetUrl = normalizeWebhookUrl(body.url || "https://onemedia-mocha.vercel.app")
 
   try {
     const result = await configureTelegramWebhook(targetUrl, true)

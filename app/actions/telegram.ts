@@ -10,6 +10,7 @@ import {
   sendTelegramMessage,
   isTelegramConfigured,
   PRODUCTION_DOMAIN,
+  normalizeWebhookUrl,
 } from "@/lib/telegram"
 
 async function verifyAdminOrDev(skipAuth = false) {
@@ -45,9 +46,7 @@ export async function resolveCurrentSiteUrl(): Promise<string> {
 export async function configureTelegramWebhook(targetUrl?: string, skipAuth = false) {
   await verifyAdminOrDev(skipAuth)
   const siteUrl = targetUrl?.trim() || (await resolveCurrentSiteUrl())
-  const webhookUrl = targetUrl?.includes("/api/telegram/webhook")
-    ? targetUrl.trim()
-    : `${siteUrl.replace(/\/$/, "")}/api/telegram/webhook`
+  const webhookUrl = normalizeWebhookUrl(siteUrl)
 
   const payload: Record<string, unknown> = {
     url: webhookUrl,
