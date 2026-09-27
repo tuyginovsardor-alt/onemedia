@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  --animate-marquee: marquee 40s linear infinite;
+}
+
+:root {
+  color-scheme: dark;
+  --background: oklch(0.145 0.02 265);
+  --foreground: oklch(0.98 0.005 250);
+  --card: oklch(0.19 0.025 265);
+  --card-foreground: oklch(0.98 0.005 250);
+  --popover: oklch(0.17 0.025 265);
+  --popover-foreground: oklch(0.98 0.005 250);
+  --primary: oklch(0.62 0.19 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.26 0.03 265);
+  --secondary-foreground: oklch(0.98 0.005 250);
+  --muted: oklch(0.24 0.025 265);
+  --muted-foreground: oklch(0.7 0.02 260);
+  --accent: oklch(0.7 0.15 240);
+  --accent-foreground: oklch(0.15 0.02 265);
+  --destructive: oklch(0.62 0.22 20);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.62 0.19 255);
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(60rem 60rem at 85% -10%, oklch(0.62 0.19 255 / 0.18), transparent 60%),
+      radial-gradient(50rem 50rem at 0% 5%, oklch(0.55 0.16 270 / 0.14), transparent 55%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .glass-strong {
+    background: color-mix(in oklch, var(--card) 80%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .text-gradient {
+    background: linear-gradient(100deg, #ffffff 0%, #8ab4ff 55%, #2f6bff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .glow-blue {
+    box-shadow: 0 0 0 1px oklch(0.62 0.19 255 / 0.4), 0 12px 40px -8px oklch(0.62 0.19 255 / 0.55);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .card-mask-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
