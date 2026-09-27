@@ -323,6 +323,54 @@ async function sendSeriesAndCartoons(chatId: number | string, siteUrl: string) {
   })
 }
 
+// Send Admin Panel
+async function sendAdminPanel(chatId: number | string, firstName = "Admin", siteUrl: string) {
+  let webhookInfo: { url: string; pending_update_count: number; last_error_message?: string } | null = null
+  try {
+    webhookInfo = await telegramApi<{ url: string; pending_update_count: number; last_error_message?: string }>("getWebhookInfo")
+  } catch {
+    // ignore
+  }
+
+  const text = [
+    `👑 <b>OneMedia — Admin Boshqaruv Paneli</b>`,
+    ``,
+    `Assalomu alaykum, <b>${firstName}</b>!`,
+    ``,
+    `📊 <b>Tizim statistikasi:</b>`,
+    `• 🎬 Filmlar bazasi: <b>${movies.length} ta film</b>`,
+    `• 🎭 Janrlar: <b>${genres.length - 1} ta janr</b>`,
+    `• 🌐 Asosiy domen: <code>onemedia-mocha.vercel.app</code>`,
+    `• 🤖 Bot: <b>@onemediahd_bot</b>`,
+    `• 📡 Webhook: <b>${webhookInfo?.url ? "🟢 Ulangan" : "🟡 Ulanmagan"}</b>`,
+    `• ⏳ Kutilayotgan so'rovlar: <b>${webhookInfo?.pending_update_count ?? 0} ta</b>`,
+    ...(webhookInfo?.last_error_message ? [`• ⚠️ Oxirgi xato: <code>${webhookInfo.last_error_message}</code>`] : []),
+    ``,
+    `⚡ <b>Boshqaruv bo'limlari:</b>`,
+  ].join("\n")
+
+  const buttons = [
+    [
+      { text: "🌐 Veb Admin Panel", web_app: { url: `${siteUrl}/admin/telegram` } },
+      { text: "⚙️ Webhook sozlamalari", url: `${siteUrl}/api/telegram/setup` },
+    ],
+    [
+      { text: "🎬 Barcha kinolar ro'yxati (12 ta)", callback_data: "admin:movies_list" },
+    ],
+    [
+      { text: "🔄 Webhookni tekshirish", callback_data: "admin:check_webhook" },
+      { text: "📢 Kanalga post / Ulashish", callback_data: "admin:broadcast_info" },
+    ],
+    [
+      { text: "🏠 Foydalanuvchi menyusi", callback_data: "menu:main" },
+    ],
+  ]
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: { inline_keyboard: buttons },
+  })
+}
+
 // Send a single movie card
 async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: string) {
   const movie = getMovie(movieId)
@@ -524,6 +572,62 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       return
     }
 
+    if (data === "admin:panel") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendAdminPanel(chatId, cb.from.first_name, siteUrl)
+      return
+    }
+
+    if (data === "admin:movies_list") {
+      await answerTelegramCallbackQuery(cb.id)
+      const listText = [
+        `🎬 <b>OneMedia filmlar bazasi (${movies.length} ta film):</b>`,
+        ``,
+        ...movies.map((m, i) => `${i + 1}. <b>${m.title}</b> (${m.year}) — ⭐ ${m.rating} [${m.quality}]`),
+        ``,
+        `<i>Filmni ko'rish uchun quyidagi tugmalardan birini bosing:</i>`,
+      ].join("\n")
+
+      const movieBtns = movies.slice(0, 8).map((m, idx) => [
+        { text: `${idx + 1}. ${m.title}`, callback_data: `movie:${m.id}` },
+      ])
+      movieBtns.push([{ text: "⬅️ Admin panelga qaytish", callback_data: "admin:panel" }])
+
+      await sendTelegramMessage(chatId, listText, {
+        reply_markup: { inline_keyboard: movieBtns },
+      })
+      return
+    }
+
+    if (data === "admin:check_webhook") {
+      const wh = await telegramApi<{ url: string; pending_update_count: number; last_error_message?: string }>("getWebhookInfo").catch(() => null)
+      await answerTelegramCallbackQuery(cb.id, "Webhook tekshirildi!", true)
+      await sendTelegramMessage(
+        chatId,
+        `📡 <b>Webhook holati:</b>\n\n• URL: <code>${wh?.url || "Yo'q"}</code>\n• Kutilayotgan so'rovlar: <b>${wh?.pending_update_count ?? 0} ta</b>\n${wh?.last_error_message ? `• ⚠️ Xatolik: ${wh.last_error_message}` : "• Holati: Alo darajada ishlayapti ✅"}`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: "⬅️ Admin panel", callback_data: "admin:panel" }]],
+          },
+        }
+      )
+      return
+    }
+
+    if (data === "admin:broadcast_info") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendTelegramMessage(
+        chatId,
+        `📢 <b>Kanal va guruhlarga film ulashish:</b>\n\nBotingiz Inline Mode qo'llab-quvvatlaydi!\nIstalgan Telegram chatida shunchaki:\n<code>@onemediahd_bot film_nomi</code>\ndeb yozing. Bot kino kartasini chiqarib beradi va uni bitta bosishda kanalga yuborishingiz mumkin!`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: "⬅️ Admin panel", callback_data: "admin:panel" }]],
+          },
+        }
+      )
+      return
+    }
+
     await answerTelegramCallbackQuery(cb.id)
     return
   }
@@ -536,6 +640,12 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
   const lower = text.toLowerCase()
   const chatId = message.chat.id
   const firstName = message.from?.first_name || "do‘st"
+
+  // Admin command
+  if (lower === "/admin" || lower === "admin" || lower === "/panel" || lower === "/stats" || lower === "👑 admin" || lower === "admin panel") {
+    await sendAdminPanel(chatId, firstName, siteUrl)
+    return
+  }
 
   // Standard commands
   if (lower === "/start" || lower === "/menu" || lower === "🏠 bosh menyu") {
