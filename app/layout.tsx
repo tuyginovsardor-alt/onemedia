@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   referrer: "no-referrer-when-downgrade",
   other: {
     "7bed8da3d8e1b0f6e2d68e3fb300fa4753bd193f": "7bed8da3d8e1b0f6e2d68e3fb300fa4753bd193f",
+    "kadam-verification": "kadam08aca8ef760fb0eff1f8e2e04720ba09",
   },
 }
 
@@ -38,6 +39,7 @@ export default function RootLayout({
       <head>
         <meta name="referrer" content="no-referrer-when-downgrade" />
         <meta name="7bed8da3d8e1b0f6e2d68e3fb300fa4753bd193f" content="7bed8da3d8e1b0f6e2d68e3fb300fa4753bd193f" />
+        <meta name="kadam-verification" content="kadam08aca8ef760fb0eff1f8e2e04720ba09" />
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
       <body className={`${inter.variable} ${sora.variable} font-sans`}>
