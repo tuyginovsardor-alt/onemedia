@@ -91,9 +91,10 @@ export function removeAdmin(id: string): boolean {
 export function isAuthorizedAdmin(identifier?: string | null): boolean {
   if (!identifier) return false
   const clean = identifier.trim().toLowerCase().replace("@", "")
+  if (!clean) return false
   return globalAdmins.some((a) => {
     const aid = a.identifier.trim().toLowerCase().replace("@", "")
-    return aid === clean || aid.includes(clean) || clean.includes(aid)
+    return aid === clean
   })
 }
 
