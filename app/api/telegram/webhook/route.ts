@@ -11,7 +11,7 @@ import {
 } from "@/lib/telegram"
 import { movies, genres, getMovie, getFeatured, byGenre } from "@/lib/movies"
 import { getAllMedia, getMediaById } from "@/lib/anime-store"
-import { getSponsorChannels, checkChannelSubscription } from "@/lib/admin-store"
+import { getSponsorChannels, checkChannelSubscription, isAuthorizedAdmin, reviewReceipt } from "@/lib/admin-store"
 import { generateAdminSignature } from "@/lib/admin-auth"
 import { parseTelegramMediaPost, saveMediaDraft, getMediaDraft, deleteMediaDraft } from "@/lib/media-parser"
 import { addMediaItem } from "@/lib/anime-store"
