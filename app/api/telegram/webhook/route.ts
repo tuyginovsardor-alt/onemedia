@@ -142,15 +142,21 @@ function getMovieInlineKeyboard(siteUrl: string, movie: (typeof movies)[0]) {
 }
 
 // Main persistent reply keyboard
-function getMainMenuReplyKeyboard(siteUrl: string) {
+function getMainMenuReplyKeyboard(siteUrl: string, isAdmin = false) {
+  const keyboard = [
+    [{ text: "🎬 Kino izlash" }, { text: "🔥 Mashhur kinolar" }],
+    [{ text: "🆕 Yangi filmlar" }, { text: "💎 VIP Obuna & Tariflar" }],
+    [{ text: "🎭 Janrlar" }, { text: "📺 Seriallar & Multfilmlar" }],
+    [{ text: "🌐 OneMedia Sayti (WebApp)" }, { text: "⭐ Sevimlilar" }],
+    [{ text: "📥 Yuklab olish" }, { text: "ℹ️ Yordam" }],
+  ]
+
+  if (isAdmin) {
+    keyboard.unshift([{ text: "🎬 Media Qo'shish (Kino/Anime)" }, { text: "👑 Admin Panel" }])
+  }
+
   return {
-    keyboard: [
-      [{ text: "🎬 Kino izlash" }, { text: "🔥 Mashhur kinolar" }],
-      [{ text: "🆕 Yangi filmlar" }, { text: "🌟 Top kinolar" }],
-      [{ text: "🎭 Janrlar" }, { text: "📺 Seriallar & Multfilmlar" }],
-      [{ text: "🌐 OneMedia Sayti (WebApp)" }, { text: "⭐ Sevimlilar" }],
-      [{ text: "📥 Yuklab olish" }, { text: "ℹ️ Yordam" }],
-    ],
+    keyboard,
     resize_keyboard: true,
     is_persistent: true,
   }
@@ -158,6 +164,7 @@ function getMainMenuReplyKeyboard(siteUrl: string) {
 
 // Send main menu welcome
 async function sendMainMenu(chatId: number | string, firstName = "do‘st", siteUrl: string) {
+  const isAdmin = isAuthorizedAdmin(String(chatId))
   const text = [
     `Assalomu alaykum, <b>${firstName}</b>! 👋`,
     ``,
@@ -168,27 +175,70 @@ async function sendMainMenu(chatId: number | string, firstName = "do‘st", site
     `🔍 <i>Film qidirish uchun uning nomini yozib yuboring yoki quyidagi menyudan foydalaning:</i>`,
   ].join("\n")
 
+  const inlineButtons = [
+    [
+      { text: "🍿 OneMedia WebApp (Kino Portali)", web_app: { url: siteUrl } },
+    ],
+    [
+      { text: "💎 VIP Obuna & Tariflar", callback_data: "menu:tariffs" },
+      { text: "🔥 Trend kinolar", callback_data: "menu:trending" },
+    ],
+    [
+      { text: "🎭 Janrlar bo'yicha", callback_data: "menu:genres" },
+      { text: "🔍 Qidiruv", callback_data: "menu:search" },
+    ],
+  ]
+
+  if (isAdmin) {
+    inlineButtons.unshift([
+      { text: "🎬 Media Qo'shish (Kino/Anime)", callback_data: "admin:wizard:anime" },
+      { text: "👑 Admin Panel", callback_data: "admin:panel" },
+    ])
+  }
+
   await sendTelegramMessage(chatId, text, {
     reply_markup: {
-      inline_keyboard: [
-        [
-          { text: "🍿 OneMedia WebApp (Kino Portali)", web_app: { url: siteUrl } },
-        ],
-        [
-          { text: "🔥 Trend kinolar", callback_data: "menu:trending" },
-          { text: "🌟 Top reyting", callback_data: "menu:top" },
-        ],
-        [
-          { text: "🎭 Janrlar bo'yicha", callback_data: "menu:genres" },
-          { text: "🔍 Qidiruv", callback_data: "menu:search" },
-        ],
-      ],
+      inline_keyboard: inlineButtons,
     },
   })
 
   // Also ensure reply keyboard is active
   await sendTelegramMessage(chatId, "Quyidagi tugmalar orqali bo'limni tanlang:", {
-    reply_markup: getMainMenuReplyKeyboard(siteUrl),
+    reply_markup: getMainMenuReplyKeyboard(siteUrl, isAdmin),
+  })
+}
+
+// Send Tariff Menu in Bot Chat
+async function sendTariffMenu(chatId: number | string) {
+  const text = [
+    `💎 <b>OneMedia VIP Obuna Tariflari:</b>`,
+    ``,
+    `1️⃣ ⚡ <b>1 Kunlik VIP Pass:</b> Saytda <code>1 ta reklama ko'rish</code> orqali bepul ochiladi!`,
+    `2️⃣ 🚀 <b>1 Haftalik VIP Express:</b> <code>9,000 UZS</code>`,
+    `3️⃣ ⭐ <b>1 Oylik VIP Premium:</b> <code>25,000 UZS</code> (Eng ommabop)`,
+    `4️⃣ 👑 <b>1 Yillik MAX Cheksiz:</b> <code>120,000 UZS</code>`,
+    ``,
+    `💳 <b>To'lov qilish tartibi:</b>`,
+    `1. Quyidagi kartaga to'lovni o'tkazing.`,
+    `2. To'lov cheki (skrinshot)ni shu bot chatiga yuboring.`,
+    `3. Chek darhol adminga (@sardor) yuboriladi va VIP obunangiz avtomatik tasdiqlanadi!`,
+    ``,
+    `💳 <b>To'lov rekvizitlari:</b>`,
+    `• <b>Kapitalbank (Uzcard):</b> <code>8600 4912 3456 7890</code>`,
+    `• <b>TBC Bank (Humo):</b> <code>9860 1201 9876 5432</code>`,
+    `• <b>Qabul qiluvchi:</b> SARDOR TUYGINOV`,
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, text, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "⚡ 1 Kunlik (1 ta reklama ko'rish)", callback_data: "tariff:1d" }],
+        [{ text: "🚀 1 Haftalik (9,000 UZS)", callback_data: "tariff:1w" }],
+        [{ text: "⭐ 1 Oylik VIP (25,000 UZS)", callback_data: "tariff:1m" }],
+        [{ text: "👑 1 Yillik MAX (120,000 UZS)", callback_data: "tariff:1y" }],
+        [{ text: "🏠 Bosh menyu", callback_data: "menu:main" }],
+      ],
+    },
   })
 }
 
@@ -368,8 +418,21 @@ async function verifyUserSubscription(chatId: number | string): Promise<{ subscr
   return { subscribed: true }
 }
 
-// Send Admin Panel
-async function sendAdminPanel(chatId: number | string, firstName = "Admin", siteUrl: string) {
+// Send Admin Panel (with strict authorization check)
+async function sendAdminPanel(chatId: number | string, firstName = "Admin", siteUrl: string, username?: string) {
+  const isAdmin = isAuthorizedAdmin(String(chatId)) || isAuthorizedAdmin(username)
+  if (!isAdmin) {
+    await sendTelegramMessage(
+      chatId,
+      `⚠️ <b>Ruxsat berilmadi!</b>\n\nKechirasiz, siz ushbu botning tasdiqlangan admini emassiz.\nAdmin panel faqat rasmiy adminlar uchun ochiq.`,
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "🏠 Bosh menyu", callback_data: "menu:main" }]],
+        },
+      }
+    )
+    return
+  }
   let webhookInfo: { url: string; pending_update_count: number; last_error_message?: string } | null = null
   try {
     webhookInfo = await telegramApi<{ url: string; pending_update_count: number; last_error_message?: string }>("getWebhookInfo")
@@ -623,15 +686,76 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       return
     }
 
-    if (data.startsWith("check_sub:")) {
-      const movieId = data.replace("check_sub:", "")
-      const subCheck = await verifyUserSubscription(chatId)
-      if (!subCheck.subscribed) {
-        await answerTelegramCallbackQuery(cb.id, "⚠️ Siz hali kanalga a'zo bo'lmadingiz! Iltimos, a'zo bo'ling.", true)
-        return
+    if (data === "menu:tariffs") {
+      await answerTelegramCallbackQuery(cb.id)
+      await sendTariffMenu(chatId)
+      return
+    }
+
+    if (data.startsWith("tariff:")) {
+      const planCode = data.replace("tariff:", "")
+      await answerTelegramCallbackQuery(cb.id)
+      if (planCode === "1d") {
+        await sendTelegramMessage(
+          chatId,
+          `⚡ <b>1 Kunlik VIP Pass</b> saytimizda <code>1 ta reklama ko'rish</code> orqali bepul taqdim etiladi!\n\nSaytga o'ting va sevgan filmingizni tanlab, reklamani 5s ko'rib bepul tomosha qiling:\nhttps://onemedia-mocha.vercel.app`,
+          {
+            reply_markup: {
+              inline_keyboard: [[{ text: "🎬 Saytda tomosha qilish", url: "https://onemedia-mocha.vercel.app" }]],
+            },
+          }
+        )
+      } else {
+        const planName = planCode === "1w" ? "1 Haftalik Express (9,000 UZS)" : planCode === "1y" ? "1 Yillik MAX (120,000 UZS)" : "1 Oylik VIP Premium (25,000 UZS)"
+        await sendTelegramMessage(
+          chatId,
+          `💳 <b>«${planName}» uchun to'lov ko'rsatmasi:</b>\n\n1. Quyidagi Uzcard/Humo kartaga to'lov o'tkazing:\n💳 <b>8600 4912 3456 7890</b> (Uzcard)\n💳 <b>9860 1201 9876 5432</b> (Humo)\n👤 SARDOR TUYGINOV\n\n2. To'lov amalga oshirilgach, <b>chek skrinshotini (rasmini) shu yerga tashlang!</b>\n\nChek darhol adminga (@sardor) tekshirish uchun yuboriladi.`
+        )
       }
-      await answerTelegramCallbackQuery(cb.id, "✅ Rahmat! Obuna tasdiqlandi.", false)
-      await sendMovieCard(chatId, movieId, siteUrl, true)
+      return
+    }
+
+    if (data.startsWith("approve_receipt:")) {
+      const parts = data.split(":")
+      const receiptId = parts[1]
+      const userChatId = parts[2]
+      await reviewReceipt(receiptId, "approved", "To'lovingiz tasdiqlandi!")
+      await answerTelegramCallbackQuery(cb.id, "✅ To'lov tasdiqlandi va foydalanuvchiga VIP berildi!", true)
+
+      if (cb.message) {
+        await editTelegramMessageText(
+          chatId,
+          cb.message.message_id,
+          `✅ <b>TO'LOV TASDIQLANDI!</b>\n\nFoydalanuvchi Chat ID: <code>${userChatId}</code>\nVIP Status: <b>30 kunlik VIP Premium faollashtirildi.</b>`
+        )
+      }
+
+      await sendTelegramMessage(
+        userChatId,
+        `🎉 <b>Tabriklaymiz! To'lovingiz tasdiqlandi.</b>\n\nSizga <b>1 oylik VIP Premium</b> obunasi muvaffaqiyatli yoqildi!\nEndi barcha film va animelarni 4K va Full HD sifatda, reklamalarsiz va cheksiz tomosha qilishingiz mumkin! 🚀`
+      ).catch(() => null)
+      return
+    }
+
+    if (data.startsWith("reject_receipt:")) {
+      const parts = data.split(":")
+      const receiptId = parts[1]
+      const userChatId = parts[2]
+      await reviewReceipt(receiptId, "rejected", "Chek ma'lumotlari mos kelmadi")
+      await answerTelegramCallbackQuery(cb.id, "❌ To'lov rad etildi.", true)
+
+      if (cb.message) {
+        await editTelegramMessageText(
+          chatId,
+          cb.message.message_id,
+          `❌ <b>TO'LOV RAD ETILDI.</b>\n\nFoydalanuvchi Chat ID: <code>${userChatId}</code>`
+        )
+      }
+
+      await sendTelegramMessage(
+        userChatId,
+        `⚠️ <b>To'lovingiz rad etildi.</b>\n\nIltimos, to'lov chekini qayta tekshirib yuboring yoki adminga (@sardor) murojaat qiling.`
+      ).catch(() => null)
       return
     }
 
@@ -667,7 +791,7 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
 
     if (data === "admin:panel") {
       await answerTelegramCallbackQuery(cb.id)
-      await sendAdminPanel(chatId, cb.from.first_name, siteUrl)
+      await sendAdminPanel(chatId, cb.from.first_name, siteUrl, cb.from.username)
       return
     }
 
@@ -1104,6 +1228,25 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
   }
 
   // Quick Chat Commands to Add Anime or Movie
+  if (lower.includes("media qo'shish") || lower === "/addmedia" || lower === "/media") {
+    startWizard(chatId, "movie")
+    await sendTelegramMessage(
+      chatId,
+      `🎬 <b>Yangi MEDIA (Film / Anime) qo'shish (Chat orqali)</b>\n\n1️⃣ <b>Film yoki Anime nomini yozing:</b>\n(masalan: <code>Qasoskorlar: Intiho</code> yoki <code>Solo Leveling 2</code>)\n\n<i>Navbatma-navbat video va rasmlarni tashlab 10-15 ta kontentni sozlab borishingiz mumkin!</i>\n\n<i>Bekor qilish: /cancel</i>`,
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "wizard:cancel" }]],
+        },
+      }
+    )
+    return
+  }
+
+  if (lower.includes("vip obuna") || lower === "/vip" || lower === "/tariflar") {
+    await sendTariffMenu(chatId)
+    return
+  }
+
   if (lower === "/addanime" || lower === "/anime_qoshish" || lower === "/anime") {
     startWizard(chatId, "anime")
     await sendTelegramMessage(
@@ -1141,7 +1284,7 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
     lower === "👑 admin" ||
     lower === "admin panel"
   ) {
-    await sendAdminPanel(chatId, firstName, siteUrl)
+    await sendAdminPanel(chatId, firstName, siteUrl, message.from?.username)
     return
   }
 

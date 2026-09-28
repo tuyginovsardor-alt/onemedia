@@ -44,7 +44,7 @@ export async function getCurrentUser(reqHeaders?: Headers): Promise<UserSessionD
         email: session.user.email,
         image: session.user.image || "/images/avatar.png",
         role: isAdmin ? "admin" : "user",
-        isVip: true,
+        isVip: isAdmin, // Only admins get automatic VIP, regular users start as false
       }
     }
   } catch {
@@ -53,6 +53,12 @@ export async function getCurrentUser(reqHeaders?: Headers): Promise<UserSessionD
 
   // Merge if both exist
   if (customUser && betterUser) {
+    const isAdmin =
+      isAuthorizedAdmin(customUser.email) ||
+      isAuthorizedAdmin(customUser.username) ||
+      isAuthorizedAdmin(customUser.telegramId?.toString()) ||
+      betterUser.role === "admin"
+
     return {
       ...betterUser,
       ...customUser,
@@ -61,7 +67,20 @@ export async function getCurrentUser(reqHeaders?: Headers): Promise<UserSessionD
       image: customUser.image && customUser.image !== "/images/avatar.png" ? customUser.image : betterUser.image,
       telegramId: customUser.telegramId,
       username: customUser.username,
-      role: customUser.role === "admin" || betterUser.role === "admin" ? "admin" : "user",
+      role: isAdmin ? "admin" : "user",
+      isVip: isAdmin || customUser.isVip === true,
+    }
+  }
+
+  if (customUser) {
+    const isAdmin =
+      isAuthorizedAdmin(customUser.email) ||
+      isAuthorizedAdmin(customUser.username) ||
+      isAuthorizedAdmin(customUser.telegramId?.toString())
+    return {
+      ...customUser,
+      role: isAdmin ? "admin" : "user",
+      isVip: isAdmin || customUser.isVip === true,
     }
   }
 

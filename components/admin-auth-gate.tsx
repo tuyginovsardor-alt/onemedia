@@ -152,15 +152,8 @@ export function AdminAuthGate({ returnUrl = "/admin" }: { returnUrl?: string }) 
           {/* Option 2: PIN / Password Form */}
           <form onSubmit={handlePinSubmit} className="space-y-4">
             <div>
-              <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-white/70">
-                <span>Master PIN yoki Parol:</span>
-                <button
-                  type="button"
-                  onClick={handleQuickFillPin}
-                  className="text-[10px] text-cyan-400 font-mono underline hover:text-cyan-300"
-                >
-                  (7777 ni qo&apos;yish)
-                </button>
+              <div className="mb-1.5 text-xs font-semibold text-white/70">
+                <span>Master Admin PIN yoki Parol:</span>
               </div>
               <div className="relative">
                 <input

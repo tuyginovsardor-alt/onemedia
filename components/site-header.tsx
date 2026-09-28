@@ -9,13 +9,15 @@ import { cn } from "@/lib/utils"
 import { Logo } from "@/components/logo"
 import { authClient } from "@/lib/auth-client"
 
+import { isAuthorizedAdmin } from "@/lib/admin-store"
+
 type HeaderUser = {
   id: string
   name: string
   email: string
   username?: string
   image?: string
-  role?: string
+  role?: "admin" | "user"
   isVip?: boolean
 }
 
@@ -47,7 +49,12 @@ export function SiteHeader() {
         const res = await fetch("/api/user/me")
         const json = await res.json()
         if (json.user) {
-          setCurrentUser(json.user)
+          const isAdmin = isAuthorizedAdmin(json.user.email) || isAuthorizedAdmin(json.user.username) || json.user.role === "admin"
+          setCurrentUser({
+            ...json.user,
+            role: isAdmin ? "admin" : "user",
+            isVip: isAdmin || Boolean(json.user.isVip),
+          })
           return
         }
       } catch {
@@ -55,12 +62,14 @@ export function SiteHeader() {
       }
 
       if (session?.user) {
+        const isAdmin = isAuthorizedAdmin(session.user.email)
         setCurrentUser({
           id: session.user.id,
           name: session.user.name,
           email: session.user.email,
           image: session.user.image || undefined,
-          isVip: true,
+          role: isAdmin ? "admin" : "user",
+          isVip: isAdmin, // Regular users do NOT get free VIP by default!
         })
       } else {
         setCurrentUser(null)
@@ -144,10 +153,31 @@ export function SiteHeader() {
                   <div className="px-3 py-2 border-b border-white/10 space-y-0.5">
                     <p className="text-xs font-extrabold text-white truncate">{currentUser.name}</p>
                     <p className="text-[10px] text-cyan-300 font-mono truncate">{currentUser.username || currentUser.email}</p>
-                    <span className="inline-block rounded bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 border border-amber-400/30 mt-1">
-                      👑 4K VIP Premium
-                    </span>
+                    {currentUser.role === "admin" ? (
+                      <span className="inline-block rounded bg-red-500/20 px-1.5 py-0.5 text-[9px] font-extrabold text-red-300 border border-red-500/40 mt-1 uppercase">
+                        🛠️ Asosiy Admin
+                      </span>
+                    ) : currentUser.isVip ? (
+                      <span className="inline-block rounded bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 border border-amber-400/30 mt-1">
+                        👑 4K VIP Premium
+                      </span>
+                    ) : (
+                      <span className="inline-block rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-medium text-white/70 border border-white/10 mt-1">
+                        👤 Oddiy Foydalanuvchi
+                      </span>
+                    )}
                   </div>
+
+                  {currentUser.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 transition border border-red-500/20 my-1"
+                    >
+                      <Crown className="h-4 w-4 text-red-400" />
+                      Admin Boshqaruv Paneli
+                    </Link>
+                  )}
 
                   <Link
                     href="/profile"
@@ -157,6 +187,17 @@ export function SiteHeader() {
                     <User className="h-4 w-4 text-cyan-400" />
                     Mening Profilim
                   </Link>
+
+                  {!currentUser.isVip && (
+                    <Link
+                      href="/payment"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-amber-300 hover:bg-amber-400/10 transition"
+                    >
+                      <Crown className="h-4 w-4 text-amber-400" />
+                      VIP Obuna Olish
+                    </Link>
+                  )}
 
                   <a
                     href="https://t.me/onemediahd_bot"
