@@ -6,6 +6,7 @@ import { VideoPlayer } from "@/components/video-player"
 import { MovieCard } from "@/components/movie-card"
 import { getMovie, movies } from "@/lib/movies"
 import { getMediaById, getAllMedia } from "@/lib/anime-store"
+import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
 
 export const dynamic = "force-dynamic"
 
@@ -104,6 +105,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
             mediaId={movie.id}
             episodes={(movie as any).episodes}
           />
+          <HilltopAdBanner />
           <div className="flex flex-col items-start gap-3 rounded-2xl glass p-4 ring-1 ring-white/10 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-white/70">
               To'liq versiyani Telegram bot orqali ham ko'rishingiz mumkin.

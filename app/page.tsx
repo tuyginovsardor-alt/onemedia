@@ -5,6 +5,7 @@ import { Hero } from "@/components/hero"
 import { MovieRow } from "@/components/movie-row"
 import { MovieCard } from "@/components/movie-card"
 import { getFeatured, rows, getMovie, movies } from "@/lib/movies"
+import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
 
 export default function HomePage() {
   const featured = getFeatured()
@@ -25,6 +26,9 @@ export default function HomePage() {
           <FeatureChip icon={Clapperboard} title="10 000+ film" desc="Har kuni yangilanadi" />
         </div>
       </section>
+
+      {/* HilltopAds Banner Ad */}
+      <HilltopAdBanner />
 
       {rows.map((row) => (
         <MovieRow

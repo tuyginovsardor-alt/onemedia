@@ -5,6 +5,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import { MovieCard } from "@/components/movie-card"
 import { movies, genres } from "@/lib/movies"
 import { cn } from "@/lib/utils"
+import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
 
 type Sort = "reyting" | "yil" | "nom"
 
@@ -72,6 +73,9 @@ export default function CatalogPage() {
           </button>
         ))}
       </div>
+
+      {/* Ad Banner */}
+      <HilltopAdBanner />
 
       {/* Grid */}
       <div className="mt-8 grid grid-cols-2 gap-4 pb-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
