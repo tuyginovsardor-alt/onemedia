@@ -5,14 +5,22 @@ import { Star, Plus, Share2, Download, Send } from 'lucide-react'
 import { VideoPlayer } from "@/components/video-player"
 import { MovieCard } from "@/components/movie-card"
 import { getMovie, movies } from "@/lib/movies"
-import { getMediaById, getAllMedia } from "@/lib/anime-store"
+import { getMediaById, addMediaItem } from "@/lib/anime-store"
+import { fetchMediaByIdFromNeon } from "@/lib/db/media-db"
 import { HilltopAdBanner, HilltopAdBannerSecondary } from "@/components/hilltop-ad-banner"
 
 export const dynamic = "force-dynamic"
 
 export default async function FilmPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const movie = getMediaById(id) || getMovie(id)
+  let movie = getMediaById(id) || getMovie(id)
+  if (!movie) {
+    const neonMedia = await fetchMediaByIdFromNeon(id)
+    if (neonMedia) {
+      addMediaItem(neonMedia)
+      movie = neonMedia
+    }
+  }
   if (!movie) notFound()
 
   const similar = movies

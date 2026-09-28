@@ -15,7 +15,7 @@ import { getSponsorChannels, checkChannelSubscription, isAuthorizedAdmin, review
 import { generateAdminSignature } from "@/lib/admin-auth"
 import { parseTelegramMediaPost, saveMediaDraft, getMediaDraft, deleteMediaDraft } from "@/lib/media-parser"
 import { addMediaItem } from "@/lib/anime-store"
-import { saveMediaItemToNeon, fetchAllMediaFromNeon } from "@/lib/db/media-db"
+import { saveMediaItemToNeon, fetchAllMediaFromNeon, fetchMediaByIdFromNeon } from "@/lib/db/media-db"
 import {
   getWizardState,
   startWizard,
@@ -519,11 +519,11 @@ async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: 
 
   let movie = getMediaById(movieId) || getMovie(movieId)
   if (!movie) {
-    const freshList = await fetchAllMediaFromNeon().catch(() => [])
-    for (const item of freshList) {
-      addMediaItem(item)
+    const neonItem = await fetchMediaByIdFromNeon(movieId)
+    if (neonItem) {
+      addMediaItem(neonItem)
+      movie = neonItem
     }
-    movie = getMediaById(movieId) || getMovie(movieId)
   }
   if (!movie) {
     await sendTelegramMessage(chatId, "Kechirasiz, ushbu film yoki anime topilmadi.")
@@ -531,10 +531,10 @@ async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: 
   }
 
   const caption = formatMovieCard(movie as any)
-  const posterUrl = getPosterUrl(siteUrl, movie.poster)
+  const photoToUse = movie.posterFileId || getPosterUrl(siteUrl, movie.poster)
   const keyboard = getMovieInlineKeyboard(siteUrl, movie as any)
 
-  await sendTelegramPhoto(chatId, posterUrl, caption, {
+  await sendTelegramPhoto(chatId, photoToUse, caption, {
     reply_markup: keyboard,
   })
 }

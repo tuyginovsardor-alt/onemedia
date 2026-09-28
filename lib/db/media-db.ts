@@ -85,6 +85,20 @@ export async function fetchAllMediaFromNeon(): Promise<MediaItem[]> {
   }
 }
 
+export async function fetchMediaByIdFromNeon(id: string): Promise<MediaItem | null> {
+  try {
+    await ensureDatabaseTables()
+    const rows = await db.select().from(media).where(eq(media.id, id))
+    if (rows.length === 0) return null
+    const row = rows[0]
+    const episodes = await db.select().from(mediaEpisode).where(eq(mediaEpisode.mediaId, id))
+    return mapDbMediaToMediaItem(row, episodes)
+  } catch (err) {
+    console.error("Neon DB query by id error:", (err as Error).message)
+    return null
+  }
+}
+
 export async function saveMediaItemToNeon(item: Omit<MediaItem, "id" | "addedAt">): Promise<MediaItem> {
   await ensureDatabaseTables()
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getTelegramBotToken } from "@/lib/telegram"
-import { getMediaById } from "@/lib/anime-store"
+import { getMediaById, addMediaItem } from "@/lib/anime-store"
+import { fetchMediaByIdFromNeon } from "@/lib/db/media-db"
 
 // In-memory cache for Telegram file paths (valid for ~50 minutes)
 type CachedTelegramFile = {
@@ -53,7 +54,14 @@ export async function GET(request: Request) {
 
   // 1. If mediaId is provided, look up episode
   if (mediaId) {
-    const media = getMediaById(mediaId)
+    let media = getMediaById(mediaId)
+    if (!media) {
+      const neonItem = await fetchMediaByIdFromNeon(mediaId)
+      if (neonItem) {
+        addMediaItem(neonItem)
+        media = neonItem
+      }
+    }
     const ep = media?.episodes.find((e) => e.episodeNumber === episodeNumber) || media?.episodes[0]
     if (ep) {
       if (ep.telegramFileId && token) {

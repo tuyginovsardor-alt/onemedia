@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { SlidersHorizontal } from 'lucide-react'
 import { MovieCard } from "@/components/movie-card"
-import { movies, genres } from "@/lib/movies"
+import { movies as staticMovies, genres } from "@/lib/movies"
 import { cn } from "@/lib/utils"
 import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
 
@@ -12,16 +12,31 @@ type Sort = "reyting" | "yil" | "nom"
 export default function CatalogPage() {
   const [genre, setGenre] = useState("Barchasi")
   const [sort, setSort] = useState<Sort>("reyting")
+  const [allMedia, setAllMedia] = useState<any[]>(staticMovies)
+
+  useEffect(() => {
+    fetch("/api/media")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.media) && data.media.length > 0) {
+          // Combine Neon items with static items avoiding duplicates
+          const neonIds = new Set(data.media.map((m: any) => m.id))
+          const filteredStatic = staticMovies.filter((m) => !neonIds.has(m.id))
+          setAllMedia([...data.media, ...filteredStatic])
+        }
+      })
+      .catch(() => null)
+  }, [])
 
   const list = useMemo(() => {
     const filtered =
-      genre === "Barchasi" ? movies : movies.filter((m) => m.genres.includes(genre))
+      genre === "Barchasi" ? allMedia : allMedia.filter((m) => m.genres?.includes(genre))
     return [...filtered].sort((a, b) => {
-      if (sort === "reyting") return b.rating - a.rating
-      if (sort === "yil") return b.year - a.year
-      return a.title.localeCompare(b.title)
+      if (sort === "reyting") return (b.rating || 0) - (a.rating || 0)
+      if (sort === "yil") return (b.year || 0) - (a.year || 0)
+      return (a.title || "").localeCompare(b.title || "")
     })
-  }, [genre, sort])
+  }, [genre, sort, allMedia])
 
   return (
     <div className="mx-auto max-w-7xl px-4 pt-8 md:px-8 md:pt-12">
