@@ -14,8 +14,13 @@ import {
   Settings,
   Sparkles,
   CheckCircle,
+  ShieldAlert,
+  Unlock,
+  Crown,
+  Eye,
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
 
 type VideoPlayerProps = {
   poster?: string
@@ -43,8 +48,55 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
   const [controlsVisible, setControlsVisible] = useState(true)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // 1 Kino = 1 Reklama Ad Gate state
+  const [isUnlocked, setIsUnlocked] = useState(false)
+  const [showAdModal, setShowAdModal] = useState(false)
+  const [adCountdown, setAdCountdown] = useState(5)
+  const [canUnlock, setCanUnlock] = useState(false)
+
   // Stream source URL: uses dynamic proxy that handles Range and Telegram refresh
   const streamSrc = videoUrl || `/api/stream/telegram?media_id=${mediaId}&ep=${currentEpisode}`
+
+  // Check unlock status on load and episode change
+  useEffect(() => {
+    try {
+      const isVip = localStorage.getItem("onemedia_vip") === "true"
+      const unl = localStorage.getItem(`onemedia_unlocked_${mediaId}_ep${currentEpisode}`) === "true"
+      if (isVip || unl) {
+        setIsUnlocked(true)
+      } else {
+        setIsUnlocked(false)
+      }
+    } catch {
+      setIsUnlocked(false)
+    }
+  }, [mediaId, currentEpisode])
+
+  // Countdown timer for ad watch
+  useEffect(() => {
+    if (!showAdModal) return
+    if (adCountdown > 0) {
+      const timer = setTimeout(() => setAdCountdown((c) => c - 1), 1000)
+      return () => clearTimeout(timer)
+    } else {
+      setCanUnlock(true)
+    }
+  }, [showAdModal, adCountdown])
+
+  const handleUnlockAndPlay = () => {
+    try {
+      localStorage.setItem(`onemedia_unlocked_${mediaId}_ep${currentEpisode}`, "true")
+    } catch {
+      // ignore
+    }
+    setIsUnlocked(true)
+    setShowAdModal(false)
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => null)
+      setPlaying(true)
+      setShowResumeBanner(false)
+    }
+  }
 
   // 1. Check for saved resume position on mount
   useEffect(() => {
@@ -92,6 +144,12 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
       videoRef.current.pause()
       setPlaying(false)
     } else {
+      if (!isUnlocked) {
+        setShowAdModal(true)
+        setAdCountdown(5)
+        setCanUnlock(false)
+        return
+      }
       videoRef.current.play().catch(() => null)
       setPlaying(true)
       setShowResumeBanner(false)
@@ -225,6 +283,75 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
               >
                 Boshidan
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* 🎬 1 Kino = 1 Reklama Ad Unlock Modal */}
+        {showAdModal && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-full max-w-md rounded-2xl border border-cyan-400/40 bg-slate-950/95 p-5 text-center shadow-2xl space-y-4">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/20 text-cyan-400 ring-1 ring-cyan-400/30">
+                <Unlock className="h-6 w-6" />
+              </div>
+
+              <div>
+                <span className="rounded-full bg-cyan-400/15 border border-cyan-400/30 px-3 py-1 text-[11px] font-extrabold text-cyan-300 uppercase">
+                  1 Kino = 1 Reklama
+                </span>
+                <h3 className="mt-2 font-display text-lg font-black text-white">
+                  Kinoni Bepul Ochish
+                </h3>
+                <p className="mt-1 text-xs text-white/70 leading-relaxed">
+                  Homiy reklamani ko&apos;rish orqali <b>«{title}»</b> filmini to&apos;liq va 4K sifatda bepul tomosha qiling!
+                </p>
+              </div>
+
+              {/* HilltopAd Banner in Modal */}
+              <div
+                onClick={() => setCanUnlock(true)}
+                className="cursor-pointer rounded-xl border border-white/10 bg-black/60 p-2 overflow-hidden hover:border-cyan-400/50 transition"
+              >
+                <HilltopAdBanner className="my-0" />
+                <p className="mt-1 text-[10px] text-cyan-300/80 underline font-medium">
+                  💡 Reklama banneri ustiga bossangiz, kino darhol ochiladi
+                </p>
+              </div>
+
+              {/* Status and Action Buttons */}
+              <div className="space-y-2 pt-1">
+                {canUnlock ? (
+                  <button
+                    onClick={handleUnlockAndPlay}
+                    className="w-full rounded-xl bg-cyan-400 py-3 text-xs font-black text-slate-950 hover:bg-cyan-300 shadow-lg shadow-cyan-400/30 flex items-center justify-center gap-2 animate-bounce"
+                  >
+                    <Play className="h-4 w-4 fill-current" /> ▶ Kinoni Tomosha Qilish (Ochildi)
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleUnlockAndPlay}
+                    className="w-full rounded-xl bg-white/10 border border-white/20 py-3 text-xs font-bold text-white/80 hover:bg-white/20 flex items-center justify-center gap-2"
+                  >
+                    ⏳ Reklama ko&apos;rilmoqda ({adCountdown}s) • Tezroq Ochish
+                  </button>
+                )}
+
+                <div className="flex items-center justify-between text-[11px] text-white/50 pt-1">
+                  <a
+                    href="/payment"
+                    target="_blank"
+                    className="flex items-center gap-1 text-amber-300 hover:underline font-bold"
+                  >
+                    <Crown className="h-3.5 w-3.5 text-amber-400" /> VIP Obuna Olish (3,000 UZS)
+                  </a>
+                  <button
+                    onClick={() => setShowAdModal(false)}
+                    className="hover:text-white underline"
+                  >
+                    Yopish
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

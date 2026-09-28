@@ -29,7 +29,7 @@ export default async function PaymentPage() {
       {/* Subscription Plans */}
       <section className="space-y-3">
         <h2 className="text-sm font-bold uppercase tracking-wider text-white/80">1. Tarifni tanlang</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((pl) => (
             <div
               key={pl.id}
