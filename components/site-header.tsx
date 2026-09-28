@@ -68,6 +68,10 @@ export function SiteHeader() {
     }
 
     checkUser()
+
+    const handleUpdate = () => checkUser()
+    window.addEventListener("user-session-updated", handleUpdate)
+    return () => window.removeEventListener("user-session-updated", handleUpdate)
   }, [session, pathname])
 
   return (

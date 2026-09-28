@@ -231,6 +231,7 @@ export function SmartMediaAdder() {
     if (!pasteText.trim()) return
     const parsed = parseTelegramMediaPost(pasteText)
     if (parsed.title) setTitle(parsed.title)
+    if (parsed.originalTitle) setOriginalTitle(parsed.originalTitle)
     if (parsed.year) setYear(parsed.year)
     if (parsed.rating) setRating(parsed.rating)
     if (parsed.quality) setQuality(parsed.quality)
@@ -238,13 +239,92 @@ export function SmartMediaAdder() {
     if (parsed.genres && parsed.genres.length > 0) setGenres(parsed.genres.join(", "))
     if (parsed.synopsis) setSynopsis(parsed.synopsis)
     if (parsed.fileId) setTelegramFileId(parsed.fileId)
-    if (parsed.type === "anime") {
-      setMode("anime")
-      if (parsed.totalEpisodes && parsed.totalEpisodes > 1) {
-        setTotalEpisodes(parsed.totalEpisodes)
+    if (parsed.photoFileId) setPosterFileId(parsed.photoFileId)
+    if (parsed.dubbingStudio) setDubbingStudio(parsed.dubbingStudio)
+    if (parsed.country) setCountry(parsed.country)
+    if (parsed.ageRating) setAgeRating(parsed.ageRating)
+
+    if (parsed.type === "anime" || parsed.type === "series") {
+      setMode(parsed.type as "anime" | "series")
+      if (parsed.season) setSeason(parsed.season)
+      const count = parsed.totalEpisodes && parsed.totalEpisodes > 0 ? parsed.totalEpisodes : 12
+      setTotalEpisodes(count)
+
+      // Auto-generate episode rows
+      const eps: EpisodeItem[] = []
+      for (let i = 1; i <= Math.min(count, 30); i++) {
+        eps.push({
+          episodeNumber: i,
+          title: `${i}-qism`,
+          fileId: i === 1 && parsed.fileId ? parsed.fileId : "",
+          posterFileId: parsed.photoFileId || "",
+          duration: "24 daq",
+        })
       }
+      setEpisodesList(eps)
     }
     setShowAutoParser(false)
+  }
+
+  function applyAnimePreset(presetName: string) {
+    if (presetName === "solo_leveling") {
+      setMode("anime")
+      setTitle("Solo Leveling 2-mavsum (Arise from the Shadow)")
+      setOriginalTitle("Ore dake Level Up na Ken Season 2")
+      setYear(2025)
+      setRating(9.3)
+      setQuality("4K")
+      setDuration("24 daq")
+      setCountry("Yaponiya")
+      setDubbingStudio("AnimeDub")
+      setGenres("Anime, Jangari, Fantastika, Isekai, Shounen")
+      setSynopsis("Sung Jin-Woo soya lordi sifatida o'zining yangi armiyasini yig'ib, S-darajali dahshatli maxluqlarga qarshi jangga kirishadi.")
+      setSeason(2)
+      setTotalEpisodes(12)
+      const eps: EpisodeItem[] = []
+      for (let i = 1; i <= 12; i++) {
+        eps.push({ episodeNumber: i, title: `${i}-qism`, fileId: "", duration: "24 daq" })
+      }
+      setEpisodesList(eps)
+    } else if (presetName === "demon_slayer") {
+      setMode("anime")
+      setTitle("Demon Slayer: Hashira Training Arc")
+      setOriginalTitle("Kimetsu no Yaiba Season 4")
+      setYear(2024)
+      setRating(9.0)
+      setQuality("4K")
+      setDuration("24 daq")
+      setCountry("Yaponiya")
+      setDubbingStudio("AnimeDub")
+      setGenres("Anime, Jangari, Fantastika, Shounen")
+      setSynopsis("Tanjiro va uning do'stlari ustunlar (Hashira) rahbarligida Muzan Kibutsuji va uning iblislariga qarshi hal qiluvchi jangga tayyorgarlik ko'rishadi.")
+      setSeason(4)
+      setTotalEpisodes(8)
+      const eps: EpisodeItem[] = []
+      for (let i = 1; i <= 8; i++) {
+        eps.push({ episodeNumber: i, title: `${i}-qism`, fileId: "", duration: "24 daq" })
+      }
+      setEpisodesList(eps)
+    } else if (presetName === "naruto") {
+      setMode("anime")
+      setTitle("Naruto Shippuden (Klassik)")
+      setOriginalTitle("Naruto Shippuuden")
+      setYear(2023)
+      setRating(8.9)
+      setQuality("FHD")
+      setDuration("24 daq")
+      setCountry("Yaponiya")
+      setDubbingStudio("UzAnime Group")
+      setGenres("Anime, Jangari, Sarguzasht, Shounen")
+      setSynopsis("Naruto Uzumaki Konoha qishlog'ini va do'stlarini qutqarish uchun Akatsuki tashkilotiga qarshi kurashadi.")
+      setSeason(1)
+      setTotalEpisodes(24)
+      const eps: EpisodeItem[] = []
+      for (let i = 1; i <= 24; i++) {
+        eps.push({ episodeNumber: i, title: `${i}-qism`, fileId: "", duration: "24 daq" })
+      }
+      setEpisodesList(eps)
+    }
   }
 
   function toggleGenre(genre: string) {
@@ -428,21 +508,48 @@ export function SmartMediaAdder() {
             placeholder={`Masalan:\n🎬 Nomi: Solo Leveling 2-mavsum\n📅 Yil: 2025\n⭐ Reyting: 9.1\n🎭 Janr: Anime, Jangari, Fantastika\n📁 File ID: BAACAgIAAxkBA...\n📝 Tavsif: Insoniyatning eng zaif ovchisi...`}
             className="w-full rounded-xl border border-white/15 bg-black/60 p-3 text-xs text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none font-mono"
           />
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setPasteText("")}
-              className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:text-white"
-            >
-              Tozalash
-            </button>
-            <button
-              type="button"
-              onClick={handleAutoParse}
-              className="rounded-xl bg-cyan-400 px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-300 flex items-center gap-1.5 shadow-md shadow-cyan-400/20"
-            >
-              <Sparkles className="h-3.5 w-3.5" /> Matndan to&apos;ldirish
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-bold text-white/50">Tezkor shablonlar:</span>
+              <button
+                type="button"
+                onClick={() => applyAnimePreset("solo_leveling")}
+                className="rounded-lg bg-cyan-400/10 border border-cyan-400/30 px-2.5 py-1 text-[10px] font-bold text-cyan-300 hover:bg-cyan-400/20"
+              >
+                🎭 Solo Leveling 2
+              </button>
+              <button
+                type="button"
+                onClick={() => applyAnimePreset("demon_slayer")}
+                className="rounded-lg bg-purple-400/10 border border-purple-400/30 px-2.5 py-1 text-[10px] font-bold text-purple-300 hover:bg-purple-400/20"
+              >
+                ⚔️ Demon Slayer 4
+              </button>
+              <button
+                type="button"
+                onClick={() => applyAnimePreset("naruto")}
+                className="rounded-lg bg-amber-400/10 border border-amber-400/30 px-2.5 py-1 text-[10px] font-bold text-amber-300 hover:bg-amber-400/20"
+              >
+                🍥 Naruto Shippuden
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPasteText("")}
+                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:text-white"
+              >
+                Tozalash
+              </button>
+              <button
+                type="button"
+                onClick={handleAutoParse}
+                className="rounded-xl bg-cyan-400 px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-300 flex items-center gap-1.5 shadow-md shadow-cyan-400/20"
+              >
+                <Sparkles className="h-3.5 w-3.5" /> Matndan to&apos;ldirish
+              </button>
+            </div>
           </div>
         </div>
       )}
