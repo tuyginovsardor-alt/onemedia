@@ -5,7 +5,7 @@ import { Hero } from "@/components/hero"
 import { MovieRow } from "@/components/movie-row"
 import { MovieCard } from "@/components/movie-card"
 import { getFeatured, rows, getMovie, movies } from "@/lib/movies"
-import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
+import { HilltopAdBanner, HilltopAdBannerSecondary } from "@/components/hilltop-ad-banner"
 
 export default function HomePage() {
   const featured = getFeatured()
@@ -65,6 +65,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* HilltopAds Secondary Banner */}
+      <HilltopAdBannerSecondary />
 
       {/* Telegram CTA */}
       <section className="mx-auto max-w-7xl px-4 md:px-8">

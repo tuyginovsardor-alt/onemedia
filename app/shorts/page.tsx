@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { Clapperboard, Bell, Play } from 'lucide-react'
 import { movies } from "@/lib/movies"
+import { HilltopAdBannerSecondary } from "@/components/hilltop-ad-banner"
 
 export default function ShortsPage() {
   const previews = movies.slice(0, 4)
@@ -54,6 +55,8 @@ export default function ShortsPage() {
           </div>
         ))}
       </div>
+
+      <HilltopAdBannerSecondary />
     </div>
   )
 }

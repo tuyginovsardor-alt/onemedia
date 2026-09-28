@@ -5,6 +5,7 @@ import { Search, Sparkles, TrendingUp } from 'lucide-react'
 import { MovieCard } from "@/components/movie-card"
 import { movies } from "@/lib/movies"
 import { cn } from "@/lib/utils"
+import { HilltopAdBannerSecondary } from "@/components/hilltop-ad-banner"
 
 const suggestions = [
   "Kosmos haqidagi fantastik film",
@@ -104,6 +105,7 @@ export default function SearchPage() {
 
         {!query && (
           <div className="space-y-5 pb-8">
+            <HilltopAdBannerSecondary />
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
               <h2 className="font-display text-xl font-bold text-white">Mashhur qidiruvlar</h2>

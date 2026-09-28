@@ -6,7 +6,7 @@ import { VideoPlayer } from "@/components/video-player"
 import { MovieCard } from "@/components/movie-card"
 import { getMovie, movies } from "@/lib/movies"
 import { getMediaById, getAllMedia } from "@/lib/anime-store"
-import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
+import { HilltopAdBanner, HilltopAdBannerSecondary } from "@/components/hilltop-ad-banner"
 
 export const dynamic = "force-dynamic"
 
@@ -124,6 +124,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
         {/* Similar */}
         {similar.length > 0 && (
           <div className="mt-14 space-y-5 pb-8">
+            <HilltopAdBannerSecondary />
             <h2 className="font-display text-2xl font-bold text-white">O'xshash filmlar</h2>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {similar.map((m) => (

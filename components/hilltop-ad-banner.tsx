@@ -2,13 +2,20 @@
 
 import { useEffect, useRef } from "react"
 
-export function HilltopAdBanner({ className = "" }: { className?: string }) {
+const SCRIPT_ZONE_1 = "//prizefamily.com/boX_VJs/d.Gsl-0EYHWXcF/Ee/mM9/uDZeUQl/kZPnTlcZ0NN/jMccz/OeTmMQtwNZzxQJ2BNFzfMC5PNkwn"
+const SCRIPT_ZONE_2 = "//prizefamily.com/bBXkVOs.dYGklo0fY/WAcR/KehmF9puYZ/UplxkvPfTNcA0/NXjscL1HNaDYE/tbN/zvQ_2NNvzLUC0vNcQK"
+
+export function HilltopAdBanner({
+  className = "",
+  variant = "zone1",
+}: {
+  className?: string
+  variant?: "zone1" | "zone2"
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
-
-    // Prevent duplicate script insertion in container
     if (containerRef.current.querySelector("script")) return
 
     try {
@@ -16,13 +23,13 @@ export function HilltopAdBanner({ className = "" }: { className?: string }) {
       script.type = "text/javascript"
       script.async = true
       script.referrerPolicy = "no-referrer-when-downgrade"
-      script.src = "//prizefamily.com/boX_VJs/d.Gsl-0EYHWXcF/Ee/mM9/uDZeUQl/kZPnTlcZ0NN/jMccz/OeTmMQtwNZzxQJ2BNFzfMC5PNkwn"
+      script.src = variant === "zone2" ? SCRIPT_ZONE_2 : SCRIPT_ZONE_1
 
       containerRef.current.appendChild(script)
     } catch (e) {
       console.error("HilltopAds script loading error:", e)
     }
-  }, [])
+  }, [variant])
 
   return (
     <div className={`mx-auto my-4 flex flex-col items-center justify-center ${className}`}>
@@ -35,4 +42,8 @@ export function HilltopAdBanner({ className = "" }: { className?: string }) {
       />
     </div>
   )
+}
+
+export function HilltopAdBannerSecondary({ className = "" }: { className?: string }) {
+  return <HilltopAdBanner className={className} variant="zone2" />
 }
