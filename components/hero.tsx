@@ -41,12 +41,14 @@ export function Hero({ movies }: { movies: Movie[] }) {
             >
               Katalogga o&apos;tish
             </Link>
-            <Link
-              href="/admin"
+            <a
+              href="https://t.me/OneMediaHdBot"
+              target="_blank"
+              rel="noreferrer"
               className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-bold text-white hover:bg-white/10 transition"
             >
-              👑 Admin Panel
-            </Link>
+              🤖 Telegram Bot
+            </a>
           </div>
         </div>
       </section>

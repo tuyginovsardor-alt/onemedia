@@ -15,11 +15,20 @@ import { getSponsorChannels, checkChannelSubscription } from "@/lib/admin-store"
 import { generateAdminSignature } from "@/lib/admin-auth"
 import { parseTelegramMediaPost, saveMediaDraft, getMediaDraft, deleteMediaDraft } from "@/lib/media-parser"
 import { addMediaItem } from "@/lib/anime-store"
+import { saveMediaItemToNeon } from "@/lib/db/media-db"
+import {
+  getWizardState,
+  startWizard,
+  updateWizardState,
+  clearWizardState,
+  finalizeWizard,
+} from "@/lib/telegram-chat-wizard"
 import {
   getActiveSessionForUser,
   updateUploadSession,
   setActiveSessionForUser,
 } from "@/lib/telegram-upload-sync"
+import { markTelegramTokenAuthenticated } from "@/lib/telegram-auth-store"
 
 type TelegramChat = { id: number | string; first_name?: string; username?: string; type?: string }
 type TelegramUser = { id: number; first_name: string; username?: string }
@@ -396,6 +405,10 @@ async function sendAdminPanel(chatId: number | string, firstName = "Admin", site
       { text: "📱 Telegram Admin Panel (Mini App)", web_app: { url: signedTgUrl } },
     ],
     [
+      { text: "🎭 Anime qo'shish (Chat)", callback_data: "admin:wizard:anime" },
+      { text: "🎬 Film qo'shish (Chat)", callback_data: "admin:wizard:movie" },
+    ],
+    [
       { text: "💻 Web Studio (To'liq Dashboard)", url: signedWebUrl },
       { text: "⚙️ Webhook sozlamalari", url: `${siteUrl}/api/telegram/setup` },
     ],
@@ -708,6 +721,45 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       return
     }
 
+    if (data === "admin:wizard:anime") {
+      startWizard(chatId, "anime")
+      await answerTelegramCallbackQuery(cb.id)
+      await sendTelegramMessage(
+        chatId,
+        `🎭 <b>Yangi ANIME qo'shish (Chat orqali)</b>\n\n1️⃣ <b>Anime nomini yozing:</b>\n(masalan: <code>Solo Leveling 2-mavsum</code> yoki <code>Naruto Shippuden</code>)\n\n<i>Bekor qilish uchun /cancel deb yozing.</i>`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "wizard:cancel" }]],
+          },
+        }
+      )
+      return
+    }
+
+    if (data === "admin:wizard:movie") {
+      startWizard(chatId, "movie")
+      await answerTelegramCallbackQuery(cb.id)
+      await sendTelegramMessage(
+        chatId,
+        `🎬 <b>Yangi FILM qo'shish (Chat orqali)</b>\n\n1️⃣ <b>Film nomini yozing:</b>\n(masalan: <code>Qasoskorlar: Intiho</code> yoki <code>Avatar 3</code>)\n\n<i>Bekor qilish uchun /cancel deb yozing.</i>`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "wizard:cancel" }]],
+          },
+        }
+      )
+      return
+    }
+
+    if (data === "wizard:cancel") {
+      clearWizardState(chatId)
+      await answerTelegramCallbackQuery(cb.id, "Bekor qilindi", false)
+      if (cb.message) {
+        await editTelegramMessageText(chatId, cb.message.message_id, "❌ Film/Anime qo'shish bekor qilindi.")
+      }
+      return
+    }
+
     if (data.startsWith("draft:save:")) {
       const parts = data.split(":")
       const mediaType = parts[2] as "movie" | "anime"
@@ -719,51 +771,57 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
         return
       }
 
-      const newMedia = addMediaItem({
+      const episodes = [
+        {
+          id: `${draftId}-ep1`,
+          episodeNumber: 1,
+          title: mediaType === "anime" ? "1-qism" : "To'liq film",
+          duration: draft.duration || (mediaType === "anime" ? "24 daq" : "1h 50m"),
+          quality: draft.quality === "4K" ? ("4K" as const) : ("1080p" as const),
+          telegramFileId: draft.fileId || undefined,
+          posterFileId: draft.photoFileId || undefined,
+        },
+      ]
+
+      const savedDbMedia = await saveMediaItemToNeon({
         title: draft.title,
         type: mediaType,
         year: draft.year,
         rating: draft.rating,
         duration: draft.duration,
         ageRating: "16+",
-        country: "AQSH",
+        country: mediaType === "anime" ? "Yaponiya" : "AQSH",
         language: "O'zbekcha (Dublyaj)",
         genres: draft.genres,
         poster: draft.photoFileId ? `/api/telegram/file-proxy?fileId=${draft.photoFileId}` : "/images/poster-1.png",
         posterFileId: draft.photoFileId,
         backdrop: "/images/hero-1.png",
         synopsis: draft.synopsis,
-        director: "OneMedia Studio",
+        director: mediaType === "anime" ? "Anime Studio" : "OneMedia Studio",
         cast: ["OneMedia Ijodiy Guruhi"],
         quality: draft.quality,
         featured: true,
         totalEpisodes: mediaType === "anime" ? (draft.totalEpisodes || 12) : 1,
+        season: 1,
+        animeStatus: "completed",
+        dubbingStudio: mediaType === "anime" ? "AnimeDub" : "OneMedia Dublyaj",
         telegramStorageId: draft.fileId,
-        episodes: [
-          {
-            id: `${draftId}-ep1`,
-            episodeNumber: 1,
-            title: mediaType === "anime" ? "1-qism" : "To'liq film",
-            duration: draft.duration,
-            quality: draft.quality === "4K" ? "4K" : "1080p",
-            telegramFileId: draft.fileId,
-            posterFileId: draft.photoFileId,
-          },
-        ],
+        episodes,
       })
 
+      addMediaItem(savedDbMedia)
       deleteMediaDraft(draftId)
-      await answerTelegramCallbackQuery(cb.id, `✅ «${draft.title}» bazaga qo'shildi!`, false)
+      await answerTelegramCallbackQuery(cb.id, `✅ «${draft.title}» Neon bazasiga saqlandi!`, false)
 
       if (cb.message) {
         await editTelegramMessageText(
           chatId,
           cb.message.message_id,
-          `🎉 <b>«${newMedia.title}» muvaffaqiyatli bazaga qo'shildi!</b>\n\n• Turi: <b>${mediaType === "anime" ? "Anime" : "Film"}</b>\n• Sifati: <b>${newMedia.quality}</b>\n• File ID: <code>${draft.fileId || "Mavjud"}</code>\n\nEndi bot va saytda tomosha qilish mumkin.`,
+          `🎉 <b>«${savedDbMedia.title}» muvaffaqiyatli Neon bazasiga qo'shildi!</b>\n\n• Turi: <b>${mediaType === "anime" ? "Anime" : "Film"}</b>\n• Sifati: <b>${savedDbMedia.quality}</b>\n• File ID: <code>${draft.fileId || "Mavjud"}</code>\n\nEndi bot va saytda tomosha qilish mumkin.`,
           {
             reply_markup: {
               inline_keyboard: [
-                [{ text: "🎬 Kinoni ochish", callback_data: `movie:${newMedia.id}` }],
+                [{ text: "🎬 Kinoni ochish", callback_data: `movie:${savedDbMedia.id}` }],
                 [{ text: "👑 Admin panel", callback_data: "admin:panel" }],
               ],
             },
@@ -860,9 +918,219 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
     return
   }
 
-  if (!rawText) return
+  if (!rawText && !photoFileId && !videoFileId && !docFileId) return
   const text = rawText
   const lower = text.toLowerCase()
+
+  // 4. Cancel active wizard
+  if (lower === "/cancel" || lower === "bekor qilish" || lower === "/bekor") {
+    const wizard = getWizardState(chatId)
+    if (wizard) {
+      clearWizardState(chatId)
+      await sendTelegramMessage(chatId, "❌ Jarayon bekor qilindi.", {
+        reply_markup: {
+          inline_keyboard: [[{ text: "👑 Admin panel", callback_data: "admin:panel" }]],
+        },
+      })
+      return
+    }
+  }
+
+  // 5. Active Chat Wizard State Machine (Interactive Anime / Movie Adding via Chat)
+  const wizard = getWizardState(chatId)
+  if (wizard) {
+    // Step 1: Title received -> Ask for Poster
+    if (wizard.step === "awaiting_title") {
+      if (text.trim().length < 2) {
+        await sendTelegramMessage(chatId, "⚠️ Iltimos, film yoki anime nomini to'liq yozing:")
+        return
+      }
+      updateWizardState(chatId, {
+        step: "awaiting_poster",
+        data: { title: text.trim() },
+      })
+      await sendTelegramMessage(
+        chatId,
+        `✅ Nomi saqlandi: <b>«${text.trim()}»</b>\n\n2️⃣ <b>Endi POSTER (rasm)ni yuboring:</b>\n• Kanaldan rasmni forward qiling\n• Yoki to'g'ridan-to'g'ri rasm yuboring\n• Yoki rasm URL / File ID sini yozing\n\n<i>(O'tkazib yuborish uchun /skip yozing)</i>`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: "⏭️ O'tkazib yuborish", callback_data: "wizard:skip:poster" }]],
+          },
+        }
+      )
+      return
+    }
+
+    // Step 2: Poster received -> Ask for Video File
+    if (wizard.step === "awaiting_poster") {
+      const posterId = photoFileId || (lower !== "/skip" && text ? text.trim() : undefined)
+      updateWizardState(chatId, {
+        step: "awaiting_video",
+        data: { posterFileId: posterId },
+      })
+      await sendTelegramMessage(
+        chatId,
+        `📸 Poster qabul qilindi!\n\n3️⃣ <b>Endi asosiy VIDEO faylini yuboring:</b>\n• Kanaldan videoni forward qiling\n• Yoki video yuboring\n• Yoki Telegram Video File ID sini yozing:\n\n<i>(O'tkazib yuborish uchun /skip yozing)</i>`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: "⏭️ O'tkazib yuborish", callback_data: "wizard:skip:video" }]],
+          },
+        }
+      )
+      return
+    }
+
+    // Step 3: Video received -> Ask for Anime Season/Episodes or Movie Details
+    if (wizard.step === "awaiting_video") {
+      const vidId = videoFileId || docFileId || (lower !== "/skip" && text ? text.trim() : undefined)
+      if (wizard.type === "anime") {
+        updateWizardState(chatId, {
+          step: "awaiting_season_episodes",
+          data: { telegramFileId: vidId },
+        })
+        await sendTelegramMessage(
+          chatId,
+          `🎬 Video biriktirildi!\n\n4️⃣ <b>Anime mavsumi va qismlar sonini yozing:</b>\n(Masalan: <code>1-mavsum 12-qism</code> yoki shunchaki <code>12</code>)\n\n<i>(Standart: 1-mavsum 12-qism, o'tkazib yuborish: /skip)</i>`,
+          {
+            reply_markup: {
+              inline_keyboard: [[{ text: "⏭️ 1-mavsum 12-qism (Standart)", callback_data: "wizard:skip:season" }]],
+            },
+          }
+        )
+        return
+      } else {
+        updateWizardState(chatId, {
+          step: "awaiting_synopsis",
+          data: { telegramFileId: vidId },
+        })
+        await sendTelegramMessage(
+          chatId,
+          `🎬 Video biriktirildi!\n\n4️⃣ <b>Film tavsifi (mazmuni)ni yozing:</b>\n\n<i>(O'tkazib yuborish uchun /skip yozing)</i>`,
+          {
+            reply_markup: {
+              inline_keyboard: [[{ text: "⏭️ O'tkazib yuborish", callback_data: "wizard:skip:synopsis" }]],
+            },
+          }
+        )
+        return
+      }
+    }
+
+    // Step 4: (Anime) Season / Episodes -> Ask Dubbing Studio
+    if (wizard.step === "awaiting_season_episodes") {
+      let season = 1
+      let totalEpisodes = 12
+      if (lower !== "/skip" && text) {
+        const seasonMatch = text.match(/(\d+)\s*[-_ ]*mavsum/i)
+        const epMatch = text.match(/(\d+)\s*[-_ ]*qism/i) || text.match(/^(\d+)$/)
+        if (seasonMatch) season = parseInt(seasonMatch[1], 10)
+        if (epMatch) totalEpisodes = parseInt(epMatch[1], 10)
+      }
+      updateWizardState(chatId, {
+        step: "awaiting_dubbing",
+        data: { season, totalEpisodes },
+      })
+      await sendTelegramMessage(
+        chatId,
+        `🎭 Mavsum: <b>${season}</b> | Qismlar: <b>${totalEpisodes} ta</b>\n\n5️⃣ <b>Dublyaj studiyasini tanlang yoki yozing:</b>\n(Masalan: <code>AnimeDub</code>, <code>UzAnime</code>, <code>FanDub Uz</code>, <code>AsilMedia</code>)`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "AnimeDub", callback_data: "wizard:dubbing:AnimeDub" },
+                { text: "UzAnime Group", callback_data: "wizard:dubbing:UzAnime Group" },
+              ],
+              [
+                { text: "FanDub Uz", callback_data: "wizard:dubbing:FanDub Uz" },
+                { text: "SilkRoad Anime", callback_data: "wizard:dubbing:SilkRoad Anime" },
+              ],
+              [{ text: "⏭️ Standart / O'tkazish", callback_data: "wizard:skip:dubbing" }],
+            ],
+          },
+        }
+      )
+      return
+    }
+
+    // Step 5: (Anime) Dubbing Studio -> Ask Synopsis
+    if (wizard.step === "awaiting_dubbing") {
+      const dubbingStudio = lower !== "/skip" && text ? text.trim() : "AnimeDub"
+      updateWizardState(chatId, {
+        step: "awaiting_synopsis",
+        data: { dubbingStudio },
+      })
+      await sendTelegramMessage(
+        chatId,
+        `🎙️ Dublyaj: <b>${dubbingStudio}</b>\n\n6️⃣ <b>Anime qisqacha tavsifi (mazmuni)ni yozing:</b>\n\n<i>(O'tkazib yuborish uchun /skip yozing)</i>`,
+        {
+          reply_markup: {
+            inline_keyboard: [[{ text: "⏭️ O'tkazib yuborish", callback_data: "wizard:skip:synopsis" }]],
+          },
+        }
+      )
+      return
+    }
+
+    // Step 6: Synopsis -> Save to Neon Database!
+    if (wizard.step === "awaiting_synopsis") {
+      if (lower !== "/skip" && text) {
+        updateWizardState(chatId, {
+          data: { synopsis: text.trim() },
+        })
+      }
+
+      await sendTelegramMessage(chatId, "⏳ Neon PostgreSQL ma'lumotlar bazasiga saqlanmoqda...")
+      const saved = await finalizeWizard(chatId)
+
+      if (saved) {
+        await sendTelegramMessage(
+          chatId,
+          `🎉 <b>«${saved.title}» muvaffaqiyatli Neon bazasiga saqlandi!</b>\n\n• Turi: <b>${saved.type === "anime" ? "🎭 Anime" : "🎬 Film"}</b>\n• Mavsum: <b>${saved.season || 1}-mavsum (${saved.totalEpisodes || 1} qism)</b>\n• Dublyaj: <b>${saved.dubbingStudio || "OneMedia"}</b>\n• Sifati: <b>${saved.quality}</b>\n• Video File ID: <code>${saved.telegramStorageId || "Mavjud"}</code>\n\nEndi bot va saytda tomosha qilish mumkin!`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🎬 Tomosha qilish", callback_data: `movie:${saved.id}` }],
+                [{ text: "🎭 Yana Anime qo'shish", callback_data: "admin:wizard:anime" }],
+                [{ text: "👑 Admin panel", callback_data: "admin:panel" }],
+              ],
+            },
+          }
+        )
+      } else {
+        await sendTelegramMessage(chatId, "❌ Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.")
+      }
+      return
+    }
+  }
+
+  // Quick Chat Commands to Add Anime or Movie
+  if (lower === "/addanime" || lower === "/anime_qoshish" || lower === "/anime") {
+    startWizard(chatId, "anime")
+    await sendTelegramMessage(
+      chatId,
+      `🎭 <b>Yangi ANIME qo'shish (Chat orqali)</b>\n\n1️⃣ <b>Anime nomini yozing:</b>\n(masalan: <code>Solo Leveling 2-mavsum</code> yoki <code>Attack on Titan</code>)\n\n<i>Bekor qilish: /cancel</i>`,
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "wizard:cancel" }]],
+        },
+      }
+    )
+    return
+  }
+
+  if (lower === "/addmovie" || lower === "/kino_qoshish" || lower === "/film") {
+    startWizard(chatId, "movie")
+    await sendTelegramMessage(
+      chatId,
+      `🎬 <b>Yangi FILM qo'shish (Chat orqali)</b>\n\n1️⃣ <b>Film nomini yozing:</b>\n(masalan: <code>Qasoskorlar: Intiho</code> yoki <code>Oppenheimer</code>)\n\n<i>Bekor qilish: /cancel</i>`,
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: "❌ Bekor qilish", callback_data: "wizard:cancel" }]],
+        },
+      }
+    )
+    return
+  }
 
   // Admin command
   if (
@@ -877,9 +1145,45 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
     return
   }
 
-  // Start command (with deep linking support, e.g. /start admin, /start upload_...)
+  // Start command (with deep linking support, e.g. /start admin, /start login_..., /start upload_...)
   if (lower.startsWith("/start")) {
     const payload = lower.replace("/start", "").trim()
+
+    // 0. Telegram Auth Web Login Flow
+    if (payload.startsWith("login_") || payload === "web_login" || payload === "login") {
+      const token = payload.startsWith("login_") ? payload.replace("login_", "").trim() : ""
+
+      if (token) {
+        markTelegramTokenAuthenticated(token, {
+          id: tgUser.id,
+          first_name: firstName,
+          last_name: tgUser.last_name,
+          username: tgUser.username,
+          photo_url: undefined,
+        })
+      }
+
+      const returnUrl = token ? `${siteUrl}/api/auth/telegram-callback?token=${token}` : `${siteUrl}/profile`
+
+      await sendTelegramMessage(
+        chatId,
+        `🎉 <b>Akkountga muvaffaqiyatli kirildi!</b>\n\n` +
+          `👤 <b>Foydalanuvchi:</b> ${firstName} ${tgUser.last_name || ""}\n` +
+          `🆔 <b>Telegram ID:</b> <code>${tgUser.id}</code>\n` +
+          ` Username: <b>${tgUser.username ? `@${tgUser.username}` : "Kiritilmagan"}</b>\n` +
+          `⭐ <b>Obuna Statusi:</b> <a href="${siteUrl}/profile">4K Ultra VIP (Faol)</a>\n\n` +
+          `OneMedia kino va anime portalida xush kelibsiz! Endi saytga qaytib tomosha qilishingiz mumkin.`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎬 Saytga qaytish va tomosha qilish", url: returnUrl }],
+              [{ text: "📱 Mini Appda ochish", web_app: { url: siteUrl } }],
+            ],
+          },
+        }
+      )
+      return
+    }
 
     // 1. Upload live sync
     if (payload.startsWith("upload_")) {

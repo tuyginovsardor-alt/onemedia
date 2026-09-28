@@ -100,17 +100,19 @@ export default function HomePage() {
         {movies.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center space-y-3">
             <p className="text-sm font-semibold text-white/70">
-              Hozircha Neon bazasiga yangi kinolar qo&apos;shilmoqda.
+              Kinolar va animelar tez orada yuklanadi.
             </p>
             <p className="text-xs text-white/40">
-              Admin panelga o&apos;tib, birinchi filmni yoki animeni bir lahzada yuklashingiz mumkin!
+              Eng so&apos;nggi premyeralarni tomosha qilish uchun bizning Telegram kanal va botimizga ulaning!
             </p>
-            <Link
-              href="/admin"
+            <a
+              href="https://t.me/OneMediaHdBot"
+              target="_blank"
+              rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 transition"
             >
-              👑 Film / Anime qo&apos;shish
-            </Link>
+              🤖 Telegram Botga o&apos;tish
+            </a>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">

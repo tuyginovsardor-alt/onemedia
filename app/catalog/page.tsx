@@ -88,10 +88,10 @@ export default function CatalogPage() {
           </p>
           <div className="pt-2">
             <a
-              href="/admin"
+              href="/"
               className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 transition"
             >
-              👑 Film / Anime qo&apos;shish
+              Bosh sahifaga qaytish
             </a>
           </div>
         </div>

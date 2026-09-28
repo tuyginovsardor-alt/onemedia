@@ -1,4 +1,4 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { auth } from "@/lib/auth"
 import { isAuthorizedAdmin } from "@/lib/admin-store"
 
@@ -22,37 +22,50 @@ export async function getCurrentUser(reqHeaders?: Headers): Promise<UserSessionD
   const cookieStore = await cookies()
   const rawCookie = cookieStore.get(USER_SESSION_COOKIE)?.value
 
-  // 1. Check custom Telegram / unified session cookie
+  let customUser: UserSessionData | null = null
   if (rawCookie) {
     try {
-      const parsed = JSON.parse(decodeURIComponent(rawCookie)) as UserSessionData
-      return parsed
+      customUser = JSON.parse(decodeURIComponent(rawCookie)) as UserSessionData
     } catch {
       // ignore
     }
   }
 
-  // 2. Check Better-Auth session if headers provided
-  if (reqHeaders) {
-    try {
-      const session = await auth.api.getSession({ headers: reqHeaders })
-      if (session?.user) {
-        const isAdmin = isAuthorizedAdmin(session.user.email)
-        return {
-          id: session.user.id,
-          name: session.user.name,
-          email: session.user.email,
-          image: session.user.image || "/images/avatar.png",
-          role: isAdmin ? "admin" : "user",
-          isVip: true,
-        }
+  // Check Better-Auth session
+  let betterUser: UserSessionData | null = null
+  try {
+    const h = reqHeaders || (await headers())
+    const session = await auth.api.getSession({ headers: h })
+    if (session?.user) {
+      const isAdmin = isAuthorizedAdmin(session.user.email)
+      betterUser = {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image || "/images/avatar.png",
+        role: isAdmin ? "admin" : "user",
+        isVip: true,
       }
-    } catch {
-      // ignore
+    }
+  } catch {
+    // ignore
+  }
+
+  // Merge if both exist
+  if (customUser && betterUser) {
+    return {
+      ...betterUser,
+      ...customUser,
+      name: customUser.name || betterUser.name,
+      email: customUser.email || betterUser.email,
+      image: customUser.image && customUser.image !== "/images/avatar.png" ? customUser.image : betterUser.image,
+      telegramId: customUser.telegramId,
+      username: customUser.username,
+      role: customUser.role === "admin" || betterUser.role === "admin" ? "admin" : "user",
     }
   }
 
-  return null
+  return customUser || betterUser
 }
 
 export async function setUserSessionCookie(userData: UserSessionData) {
@@ -71,3 +84,4 @@ export async function clearUserSessionCookie() {
   const cookieStore = await cookies()
   cookieStore.delete(USER_SESSION_COOKIE)
 }
+
