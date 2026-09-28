@@ -18,6 +18,7 @@ import {
   Unlock,
   Crown,
   Eye,
+  Send,
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
@@ -233,6 +234,30 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
 
   return (
     <div className="space-y-4">
+      {/* Quick Play Mode selector */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-slate-900/90 p-3 ring-1 ring-white/10 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-bold text-white">Tomosha qilish rejimini tanlang:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`https://t.me/OneMediaHdBot?start=play_${mediaId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-cyan-300 shadow-lg shadow-cyan-400/20 active:scale-95 transition"
+          >
+            <Send className="h-3.5 w-3.5" /> 📹 Telegram Botda Ko'rish (4K)
+          </a>
+          <button
+            onClick={togglePlay}
+            className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20 active:scale-95 transition"
+          >
+            <Play className="h-3.5 w-3.5 fill-current" /> ▶️ Sayt Pleyerida
+          </button>
+        </div>
+      </div>
+
       {/* Main Player Box */}
       <div
         ref={containerRef}

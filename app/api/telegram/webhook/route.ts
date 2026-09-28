@@ -123,14 +123,15 @@ function getMovieInlineKeyboard(siteUrl: string, movie: (typeof movies)[0]) {
   return {
     inline_keyboard: [
       [
-        { text: "▶️ Onlayn ko'rish (Web)", web_app: { url: filmUrl } },
+        { text: "📹 Telegramda Ijro Etish (4K)", callback_data: `play_tg:${movie.id}` },
+        { text: "▶️ WebApp Pleyerda", web_app: { url: filmUrl } },
+      ],
+      [
         { text: "🌐 Saytda ochish", url: filmUrl },
-      ],
-      [
         { text: "📥 Yuklab olish", callback_data: `dl:${movie.id}` },
-        { text: "⭐ Sevimlilarga", callback_data: `fav:${movie.id}` },
       ],
       [
+        { text: "⭐ Sevimlilarga", callback_data: `fav:${movie.id}` },
         { text: "🔗 Do'stlarga ulashish", url: shareUrl },
       ],
       [
@@ -539,6 +540,55 @@ async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: 
   })
 }
 
+// Directly send Telegram Video file into user's Telegram chat
+async function handlePlayVideoInTelegram(chatId: number | string, movieId: string, siteUrl: string) {
+  let movie = getMediaById(movieId) || getMovie(movieId)
+  if (!movie) {
+    const neonItem = await fetchMediaByIdFromNeon(movieId)
+    if (neonItem) {
+      addMediaItem(neonItem)
+      movie = neonItem
+    }
+  }
+  if (!movie) {
+    await sendTelegramMessage(chatId, "Kechirasiz, ushbu film yoki anime topilmadi.")
+    return
+  }
+
+  const videoFileId = movie.episodes?.[0]?.telegramFileId || movie.telegramStorageId
+
+  if (videoFileId && isTelegramConfigured()) {
+    try {
+      await sendTelegramMessage(chatId, `⏳ <b>«${movie.title}»</b> video fayli yuborilmoqda...`)
+      await telegramApi("sendVideo", {
+        chat_id: chatId,
+        video: videoFileId,
+        caption: `🎬 <b>${movie.title}</b> (${movie.year})\n\n⭐ Reyting: ${movie.rating.toFixed(1)}/10 | 🎞️ Sifat: ${movie.quality} Ultra HD\n\n🍿 <i>OneMedia — Sevimli kinolaringiz bir joyda!</i>`,
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🌐 Saytda/WebApp'da ochish", web_app: { url: `${siteUrl}/film/${movie.id}` } }],
+            [{ text: "⬅️ Film ma'lumotlariga qaytish", callback_data: `movie:${movie.id}` }],
+          ],
+        },
+      })
+      return
+    } catch (err) {
+      console.error("sendVideo error:", err)
+    }
+  }
+
+  // Fallback if no video file ID or sendVideo failed
+  await sendTelegramMessage(chatId, `🎬 <b>«${movie.title}»</b> filmini saytimizdagi 4K pleyerda tomosha qiling:`, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "▶️ WebApp Pleyerda Ko'rish", web_app: { url: `${siteUrl}/film/${movie.id}` } }],
+        [{ text: "⬅️ Ortga", callback_data: `movie:${movie.id}` }],
+      ],
+    },
+  })
+}
+
 // Search movies by query
 async function handleSearch(chatId: number | string, query: string, siteUrl: string) {
   const clean = query.trim().toLowerCase()
@@ -644,6 +694,13 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
     const cb = update.callback_query
     const data = cb.data || ""
     const chatId = cb.message?.chat.id || cb.from.id
+
+    if (data.startsWith("play_tg:")) {
+      const movieId = data.replace("play_tg:", "")
+      await answerTelegramCallbackQuery(cb.id, "📹 Video tayyorlanmoqda...")
+      await handlePlayVideoInTelegram(chatId, movieId, siteUrl)
+      return
+    }
 
     if (data.startsWith("movie:")) {
       const movieId = data.replace("movie:", "")
@@ -1495,6 +1552,12 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       await sendAdminPanel(chatId, firstName, siteUrl)
       return
     }
+    if (payload.startsWith("play_")) {
+      const movieId = payload.replace("play_", "").trim()
+      await handlePlayVideoInTelegram(chatId, movieId, siteUrl)
+      return
+    }
+
     if (payload.startsWith("movie_") || payload.startsWith("film_")) {
       const movieId = payload.replace(/^(movie_|film_)/, "").trim()
       await sendMovieCard(chatId, movieId, siteUrl)
