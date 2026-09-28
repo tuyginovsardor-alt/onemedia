@@ -18,6 +18,12 @@ import {
   Mic,
   Calendar,
   Clock,
+  Image as ImageIcon,
+  Star,
+  Globe,
+  ShieldAlert,
+  Users,
+  Clapperboard,
 } from 'lucide-react'
 import { parseTelegramMediaPost } from "@/lib/media-parser"
 import { createMediaAction } from "@/app/actions/admin-management"
@@ -34,53 +40,105 @@ const POPULAR_GENRES = [
   "Tarixiy",
   "Qo'rqinchli",
   "Melodrama",
+  "Kriminal",
+  "Detektiv",
   "Isekai",
   "Shounen",
+  "Seinen",
+  "Psixologik",
+]
+
+const COUNTRIES = [
+  "AQSH (Hollywood)",
+  "Yaponiya",
+  "Janubiy Koreya",
+  "O'zbekiston",
+  "Turkiya",
+  "Buyuk Britaniya",
+  "Fransiya",
+  "Rossiya",
+  "Xitoy",
+  "Hindiston",
+]
+
+const LANGUAGES = [
+  "O'zbekcha (Professional Dublyaj)",
+  "O'zbekcha (FanDub)",
+  "Ruscha (Professional)",
+  "Asl tilda (Subtitr bilan)",
+  "Inglizcha (Asl til)",
+  "Yaponcha (Asl til)",
+  "Koreyscha (Asl til)",
 ]
 
 const DUBBING_STUDIOS = [
+  "OneMedia Dublyaj",
   "AnimeDub",
-  "FanDub Uz",
   "AsilMedia Dublyaj",
+  "FanDub Uz",
   "SilkRoad Anime",
   "UzAnime Group",
   "Tarjima Kinolar",
+  "Milliy TV Dublyaj",
+]
+
+const AGE_RATINGS = [
+  { value: "0+", label: "0+ (Barchaga tavsiya)" },
+  { value: "6+", label: "6+ (Kichik yoshdagilar)" },
+  { value: "12+", label: "12+ (O'smirlar)" },
+  { value: "16+", label: "16+ (16 yoshdan yuqori)" },
+  { value: "18+", label: "18+ (Faqat kattalar uchun)" },
 ]
 
 type EpisodeItem = {
   episodeNumber: number
   title: string
   fileId: string
+  posterFileId?: string
   duration: string
 }
 
 export function SmartMediaAdder() {
-  const [mode, setMode] = useState<"movie" | "anime">("movie")
+  const [mode, setMode] = useState<"movie" | "anime" | "series">("movie")
   const [pasteText, setPasteText] = useState("")
   const [showAutoParser, setShowAutoParser] = useState(false)
 
-  // Main Form fields
+  // 1. Title & Identity
   const [title, setTitle] = useState("")
+  const [originalTitle, setOriginalTitle] = useState("")
+
+  // 2. Separate Files (Poster Photo vs Video File ID)
+  const [posterFileId, setPosterFileId] = useState("")
+  const [posterUrl, setPosterUrl] = useState("")
+  const [telegramFileId, setTelegramFileId] = useState("")
+  const [backdropUrl, setBackdropUrl] = useState("")
+  const [trailerUrl, setTrailerUrl] = useState("")
+
+  // 3. Metadata & Details
   const [year, setYear] = useState(2025)
   const [rating, setRating] = useState(8.8)
   const [quality, setQuality] = useState<"4K" | "FHD" | "HD">("4K")
   const [duration, setDuration] = useState("1h 50m")
+  const [ageRating, setAgeRating] = useState("16+")
+  const [country, setCountry] = useState("AQSH (Hollywood)")
+  const [language, setLanguage] = useState("O'zbekcha (Professional Dublyaj)")
+  const [dubbingStudio, setDubbingStudio] = useState("OneMedia Dublyaj")
   const [genres, setGenres] = useState("Jangari, Fantastika")
   const [synopsis, setSynopsis] = useState("")
-  const [telegramFileId, setTelegramFileId] = useState("")
-  const [posterUrl, setPosterUrl] = useState("")
+  const [director, setDirector] = useState("")
+  const [cast, setCast] = useState("")
+  const [featured, setFeatured] = useState(true)
 
-  // Anime Advanced fields
+  // 4. Anime & Series Specific
   const [season, setSeason] = useState(1)
-  const [animeStatus, setAnimeStatus] = useState<"ongoing" | "completed">("ongoing")
-  const [dubbingStudio, setDubbingStudio] = useState("AnimeDub")
+  const [animeStatus, setAnimeStatus] = useState<"ongoing" | "completed">("completed")
   const [totalEpisodes, setTotalEpisodes] = useState(12)
   const [episodesList, setEpisodesList] = useState<EpisodeItem[]>([
     { episodeNumber: 1, title: "1-qism", fileId: "", duration: "24 daq" },
   ])
   const [bulkFileIds, setBulkFileIds] = useState("")
 
-  // Telegram Live Sync states
+  // 5. Telegram Live Sync
   const [syncSessionId, setSyncSessionId] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<"idle" | "waiting" | "received">("idle")
   const [syncMessage, setSyncMessage] = useState("")
@@ -106,7 +164,6 @@ export function SmartMediaAdder() {
         setSyncSessionId(data.sessionId)
         setSyncMessage(`🟡 Botingizga video yoki postni tashlang... (Kutilmoqda)`)
 
-        // Open Telegram bot URL
         const botUrl = data.botUrl || `https://t.me/onemediahd_bot?start=upload_${data.sessionId}`
         try {
           const tg = (window as any).Telegram?.WebApp
@@ -119,7 +176,6 @@ export function SmartMediaAdder() {
           window.open(botUrl, "_blank")
         }
 
-        // Start polling
         startPollingSync(data.sessionId)
       }
     } catch (err) {
@@ -139,7 +195,7 @@ export function SmartMediaAdder() {
         if (json.status === "received" && json.data) {
           const d = json.data
           setSyncStatus("received")
-          setSyncMessage("🎉 Video va ma'lumotlar botdan qabul qilindi!")
+          setSyncMessage("🎉 Video va rasm botdan qabul qilindi!")
 
           // Autofill form
           if (d.title) setTitle(d.title)
@@ -150,13 +206,12 @@ export function SmartMediaAdder() {
           if (d.genres && d.genres.length > 0) setGenres(d.genres.join(", "))
           if (d.synopsis) setSynopsis(d.synopsis)
           if (d.videoFileId) setTelegramFileId(d.videoFileId)
-          if (d.photoFileId) setPosterUrl(d.photoFileId)
+          if (d.photoFileId) setPosterFileId(d.photoFileId)
           if (d.type === "anime") {
             setMode("anime")
             if (d.totalEpisodes) setTotalEpisodes(d.totalEpisodes)
           }
 
-          // Stop polling
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
         }
       } catch {
@@ -175,13 +230,13 @@ export function SmartMediaAdder() {
   function handleAutoParse() {
     if (!pasteText.trim()) return
     const parsed = parseTelegramMediaPost(pasteText)
-    setTitle(parsed.title)
-    setYear(parsed.year)
-    setRating(parsed.rating)
-    setQuality(parsed.quality)
-    setDuration(parsed.duration)
-    setGenres(parsed.genres.join(", "))
-    setSynopsis(parsed.synopsis)
+    if (parsed.title) setTitle(parsed.title)
+    if (parsed.year) setYear(parsed.year)
+    if (parsed.rating) setRating(parsed.rating)
+    if (parsed.quality) setQuality(parsed.quality)
+    if (parsed.duration) setDuration(parsed.duration)
+    if (parsed.genres && parsed.genres.length > 0) setGenres(parsed.genres.join(", "))
+    if (parsed.synopsis) setSynopsis(parsed.synopsis)
     if (parsed.fileId) setTelegramFileId(parsed.fileId)
     if (parsed.type === "anime") {
       setMode("anime")
@@ -201,7 +256,6 @@ export function SmartMediaAdder() {
     }
   }
 
-  // Add individual episode
   function addEpisode() {
     const nextNum = episodesList.length + 1
     setEpisodesList([
@@ -233,32 +287,49 @@ export function SmartMediaAdder() {
 
     const formData = new FormData()
     formData.append("title", title)
+    if (originalTitle) formData.append("originalTitle", originalTitle)
     formData.append("type", mode)
     formData.append("year", year.toString())
     formData.append("rating", rating.toString())
     formData.append("duration", duration)
     formData.append("quality", quality)
+    formData.append("ageRating", ageRating)
+    formData.append("country", country)
+    formData.append("language", language)
+    formData.append("dubbingStudio", dubbingStudio)
     formData.append("genres", genres)
     formData.append("synopsis", synopsis)
+    formData.append("director", director)
+    formData.append("cast", cast)
+    formData.append("poster", posterUrl)
+    formData.append("posterFileId", posterFileId)
+    formData.append("backdrop", backdropUrl)
+    formData.append("trailerUrl", trailerUrl)
     formData.append("telegramFileId", telegramFileId)
+    formData.append("featured", featured ? "true" : "false")
     formData.append("totalEpisodes", mode === "anime" ? totalEpisodes.toString() : "1")
 
-    // Anime specific extras
     if (mode === "anime") {
       formData.append("season", season.toString())
       formData.append("animeStatus", animeStatus)
-      formData.append("dubbingStudio", dubbingStudio)
       formData.append("episodesJson", JSON.stringify(episodesList))
     }
 
     try {
       await createMediaAction(formData)
       setLoading(false)
-      setSuccessMsg(`🎉 «${title}» muvaffaqiyatli bazaga qo'shildi!`)
+      setSuccessMsg(`🎉 «${title}» Neon ma'lumotlar bazasiga muvaffaqiyatli saqlandi!`)
       setTitle("")
+      setOriginalTitle("")
       setSynopsis("")
       setTelegramFileId("")
+      setPosterFileId("")
+      setPosterUrl("")
+      setBackdropUrl("")
+      setTrailerUrl("")
       setBulkFileIds("")
+      setDirector("")
+      setCast("")
       setSyncStatus("idle")
       setSyncMessage("")
       setTimeout(() => setSuccessMsg(""), 5000)
@@ -270,21 +341,20 @@ export function SmartMediaAdder() {
 
   return (
     <div className="space-y-4">
-      {/* Top Special Banner: 2 Magic Helpers */}
-      <div className="rounded-2xl border border-cyan-400/30 bg-gradient-to-r from-cyan-950/30 via-slate-900/50 to-purple-950/30 p-4 space-y-3">
+      {/* Top Helper: Bot Live Sync + Auto-Parser */}
+      <div className="rounded-2xl border border-cyan-400/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-purple-950/40 p-4 space-y-3 backdrop-blur shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <h3 className="text-sm font-black text-white flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-cyan-400" />
-              Aqlli Yordamchi (Telegram Bot orqali to&apos;g&apos;ridan-to&apos;g&apos;ri yuklash)
+              Aqlli Sinxronizatsiya (Neon PostgreSQL Bazasi)
             </h3>
             <p className="text-[11px] text-white/60 mt-0.5">
-              Faylni botga tashlang — tizim avtomatik tarzda videoni, rasmni va tavsifni saytga o&apos;tkazadi!
+              Rasm va videolarni Telegram bot orqali avtomatik ajratib yuklash yoki matndan to&apos;ldirish
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Telegram Bot Direct Forward / Upload Trigger */}
             <button
               type="button"
               onClick={handleStartBotSync}
@@ -306,12 +376,11 @@ export function SmartMediaAdder() {
                 </>
               ) : (
                 <>
-                  <Send className="h-3.5 w-3.5" /> Botga yuborib yuklash
+                  <Send className="h-3.5 w-3.5" /> 🤖 Bot orqali yuklash
                 </>
               )}
             </button>
 
-            {/* Paste Text Parser */}
             <button
               type="button"
               onClick={() => setShowAutoParser((p) => !p)}
@@ -323,7 +392,6 @@ export function SmartMediaAdder() {
           </div>
         </div>
 
-        {/* Live Sync Status Notice */}
         {syncMessage && (
           <div
             className={`rounded-xl p-3 text-xs flex items-center justify-between gap-2 border ${
@@ -379,7 +447,7 @@ export function SmartMediaAdder() {
         </div>
       )}
 
-      {/* Mode Selector (Film vs Anime) */}
+      {/* Mode Selector (Film vs Anime vs Serial) */}
       <div className="flex gap-2">
         <button
           type="button"
@@ -402,7 +470,19 @@ export function SmartMediaAdder() {
               : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
           }`}
         >
-          <Tv className="h-4 w-4" /> 🎭 Anime / Serial qo&apos;shish (To&apos;liq funksiyalar)
+          <Tv className="h-4 w-4" /> 🎭 Anime qo&apos;shish
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMode("series")}
+          className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition border ${
+            mode === "series"
+              ? "bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20"
+              : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
+          }`}
+        >
+          <Clapperboard className="h-4 w-4" /> 📺 Serial qo&apos;shish
         </button>
       </div>
 
@@ -413,102 +493,271 @@ export function SmartMediaAdder() {
         </div>
       )}
 
-      {/* Main Form */}
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="text-xs text-white/70 block mb-1">Nomi:</label>
-            <input
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={mode === "anime" ? "masalan: Solo Leveling 2-mavsum" : "masalan: Qasoskorlar: Intiho"}
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
-            />
-          </div>
+      {/* Main Extensive Form */}
+      <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        {/* SECTION 1: NOM VA IDENTIFIKATSIYA */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-black uppercase text-cyan-400 tracking-wider flex items-center gap-1.5">
+            <Film className="h-3.5 w-3.5" /> 1. Film / Anime Nomi va Asl Nomi
+          </h4>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold text-white/80 block mb-1">
+                Nomi (O&apos;zbekcha): <span className="text-red-400">*</span>
+              </label>
+              <input
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={mode === "anime" ? "masalan: Solo Leveling 2-mavsum" : "masalan: Qasoskorlar: Intiho"}
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              />
+            </div>
 
-          <div>
-            <label className="text-xs text-white/70 block mb-1">
-              Telegram Storage File ID (Video yoki 1-qism):
-            </label>
-            <input
-              value={telegramFileId}
-              onChange={(e) => setTelegramFileId(e.target.value)}
-              placeholder="BAACAgIAAxkBAAE... (Botga tashlasangiz o'zi to'ladi)"
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-xs font-mono text-cyan-300 placeholder-white/30 focus:border-cyan-400 focus:outline-none"
-            />
+            <div>
+              <label className="text-xs font-semibold text-white/80 block mb-1">
+                Asl Nomi (Inglizcha / Yaponcha):
+              </label>
+              <input
+                value={originalTitle}
+                onChange={(e) => setOriginalTitle(e.target.value)}
+                placeholder="masalan: Avengers: Endgame yoki Ore dake Level Up"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-xs text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Quick parameters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div>
-            <label className="text-xs text-white/70 block mb-1">Yili:</label>
-            <input
-              type="number"
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value, 10))}
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-            />
-          </div>
+        {/* SECTION 2: ALOHIDA-ALOHIDA FAYLLAR (POSTER RASM VA VIDEO FAYL) */}
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-black/40 p-4">
+          <h4 className="text-xs font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+            <ImageIcon className="h-3.5 w-3.5" /> 2. Post Rasm va Video Fayl (Alohida kiritish)
+          </h4>
 
-          <div>
-            <label className="text-xs text-white/70 block mb-1">Reyting (1-10):</label>
-            <input
-              type="number"
-              step="0.1"
-              value={rating}
-              onChange={(e) => setRating(parseFloat(e.target.value))}
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-            />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* POSTER RASM */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-amber-200 block">
+                📸 Post Rasm (Telegram Photo File ID yoki URL):
+              </label>
+              <input
+                value={posterFileId}
+                onChange={(e) => setPosterFileId(e.target.value)}
+                placeholder="AgACAgIAAxkBAAE... (Telegram Photo File ID)"
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs font-mono text-amber-300 placeholder-white/30 focus:border-amber-400 focus:outline-none"
+              />
+              <input
+                value={posterUrl}
+                onChange={(e) => setPosterUrl(e.target.value)}
+                placeholder="yoki rasm URL (https://...)"
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white placeholder-white/30 focus:border-amber-400 focus:outline-none"
+              />
+              {posterFileId && (
+                <p className="text-[10px] text-amber-300/80">
+                  ✓ Telegram Photo File ID biriktirildi. Sayt uni avtomatik ochadi.
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="text-xs text-white/70 block mb-1">Sifat darajasi:</label>
-            <select
-              value={quality}
-              onChange={(e) => setQuality(e.target.value as any)}
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
-            >
-              <option value="4K">4K Ultra HD</option>
-              <option value="FHD">Full HD 1080p</option>
-              <option value="HD">HD 720p</option>
-            </select>
+            {/* ASOSIY VIDEO FAYL */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-cyan-200 block">
+                🎬 Video Fayl (Telegram Video File ID):
+              </label>
+              <input
+                value={telegramFileId}
+                onChange={(e) => setTelegramFileId(e.target.value)}
+                placeholder="BAACAgIAAxkBAAE... (Telegram Video File ID)"
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs font-mono text-cyan-300 placeholder-white/30 focus:border-cyan-400 focus:outline-none"
+              />
+              <input
+                value={trailerUrl}
+                onChange={(e) => setTrailerUrl(e.target.value)}
+                placeholder="Rasmiy Treyler (YouTube yoki Telegram link)"
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none"
+              />
+              <input
+                value={backdropUrl}
+                onChange={(e) => setBackdropUrl(e.target.value)}
+                placeholder="Fon Banner rasmi URL (ixtiyoriy)"
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white placeholder-white/30 focus:border-cyan-400 focus:outline-none"
+              />
+            </div>
           </div>
+        </div>
 
-          <div>
-            <label className="text-xs text-white/70 block mb-1">
-              {mode === "anime" ? "Qismlar soni:" : "Davomiyligi:"}
-            </label>
-            {mode === "anime" ? (
+        {/* SECTION 3: TEXNIK PARAMETRLAR VA CHIQUVCHI MA'LUMOTLAR */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-black uppercase text-cyan-400 tracking-wider flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5" /> 3. Asosiy Xususiyatlar va Parametrlar
+          </h4>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs text-white/70 block mb-1">Yili:</label>
               <input
                 type="number"
-                value={totalEpisodes}
-                onChange={(e) => setTotalEpisodes(parseInt(e.target.value, 10))}
+                value={year}
+                onChange={(e) => setYear(parseInt(e.target.value, 10))}
                 className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
               />
-            ) : (
+            </div>
+
+            <div>
+              <label className="text-xs text-white/70 block mb-1">Reyting (1-10):</label>
               <input
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                placeholder="2h 15m"
+                type="number"
+                step="0.1"
+                value={rating}
+                onChange={(e) => setRating(parseFloat(e.target.value))}
                 className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
               />
-            )}
+            </div>
+
+            <div>
+              <label className="text-xs text-white/70 block mb-1">Sifat darajasi:</label>
+              <select
+                value={quality}
+                onChange={(e) => setQuality(e.target.value as any)}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              >
+                <option value="4K">4K Ultra HD (Dolby Vision)</option>
+                <option value="FHD">Full HD 1080p</option>
+                <option value="HD">HD 720p</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-white/70 block mb-1">
+                {mode === "anime" ? "Qismlar soni:" : "Davomiyligi:"}
+              </label>
+              {mode === "anime" ? (
+                <input
+                  type="number"
+                  value={totalEpisodes}
+                  onChange={(e) => setTotalEpisodes(parseInt(e.target.value, 10))}
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                />
+              ) : (
+                <input
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  placeholder="2h 15m"
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div>
+              <label className="text-xs text-white/70 block mb-1 flex items-center gap-1">
+                <Globe className="h-3 w-3 text-cyan-400" /> Mamlakat (Davlat):
+              </label>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-white/70 block mb-1 flex items-center gap-1">
+                <Mic className="h-3 w-3 text-purple-400" /> Til va Dublyaj:
+              </label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-white/70 block mb-1 flex items-center gap-1">
+                <ShieldAlert className="h-3 w-3 text-amber-400" /> Yosh Chegarasi:
+              </label>
+              <select
+                value={ageRating}
+                onChange={(e) => setAgeRating(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              >
+                {AGE_RATINGS.map((ar) => (
+                  <option key={ar.value} value={ar.value}>
+                    {ar.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* ================= ANIME EXPANDED SECTION ================= */}
+        {/* SECTION 4: IJODIY GURUH (REJISSYOR VA AKTYORLAR) */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-black uppercase text-cyan-400 tracking-wider flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" /> 4. Ijodiy Guruh va Dublyaj Studiyasi
+          </h4>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="text-xs text-white/70 block mb-1">Rejissyor / Muallif:</label>
+              <input
+                value={director}
+                onChange={(e) => setDirector(e.target.value)}
+                placeholder="masalan: Kristofer Nolan"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-white/70 block mb-1">Dublyaj Studiyasi:</label>
+              <select
+                value={dubbingStudio}
+                onChange={(e) => setDubbingStudio(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              >
+                {DUBBING_STUDIOS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-white/70 block mb-1">Bosh Rollarda (Aktyorlar):</label>
+              <input
+                value={cast}
+                onChange={(e) => setCast(e.target.value)}
+                placeholder="masalan: Robert Downey Jr., Chris Evans"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ================= ANIME SPECIFIC SECTION ================= */}
         {mode === "anime" && (
           <div className="rounded-2xl border border-purple-500/30 bg-purple-950/20 p-4 space-y-4">
             <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
               <h4 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                <Tv className="h-4 w-4" /> Anime Maxsus Sozlamalari
+                <Tv className="h-4 w-4" /> Anime Qismlari va Mavsum Boshqaruvi
               </h4>
               <span className="text-[10px] text-white/50">Mavsumlar va Dublyaj boshqaruvi</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-white/70 block mb-1">Mavsum (Season):</label>
                 <input
@@ -527,23 +776,8 @@ export function SmartMediaAdder() {
                   onChange={(e) => setAnimeStatus(e.target.value as any)}
                   className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-purple-400 focus:outline-none"
                 >
-                  <option value="ongoing">Davom etmoqda (Ongoing)</option>
                   <option value="completed">Tugallangan (Completed)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs text-white/70 block mb-1">Ovoz beruvchilar (Dublyaj):</label>
-                <select
-                  value={dubbingStudio}
-                  onChange={(e) => setDubbingStudio(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-purple-400 focus:outline-none"
-                >
-                  {DUBBING_STUDIOS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
+                  <option value="ongoing">Davom etmoqda (Ongoing)</option>
                 </select>
               </div>
             </div>
@@ -579,7 +813,7 @@ export function SmartMediaAdder() {
                     <input
                       value={ep.fileId}
                       onChange={(e) => updateEpisode(idx, "fileId", e.target.value)}
-                      placeholder="Telegram File ID"
+                      placeholder="Telegram Video File ID"
                       className="flex-1 rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-xs font-mono text-cyan-300 placeholder-white/20"
                     />
                     <input
@@ -632,9 +866,11 @@ export function SmartMediaAdder() {
           </div>
         )}
 
-        {/* Genres Pill Selector */}
+        {/* SECTION 5: JANRLAR */}
         <div>
-          <label className="text-xs text-white/70 block mb-1.5">Janrlar (bosing yoki yozing):</label>
+          <label className="text-xs font-semibold text-white/80 block mb-1.5">
+            Janrlar (bosing yoki yozing):
+          </label>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {POPULAR_GENRES.map((g) => {
               const selected = genres.includes(g)
@@ -661,22 +897,39 @@ export function SmartMediaAdder() {
           />
         </div>
 
-        {/* Synopsis */}
+        {/* SECTION 6: TAVSIF (MAZMUNI) */}
         <div>
-          <label className="text-xs text-white/70 block mb-1">Tavsif (Mazmuni):</label>
+          <label className="text-xs font-semibold text-white/80 block mb-1">
+            Mazmuni va To&apos;liq Tavsifi (Synopsis):
+          </label>
           <textarea
-            rows={2}
+            rows={3}
             value={synopsis}
             onChange={(e) => setSynopsis(e.target.value)}
-            placeholder="Film yoki anime haqida qisqacha ma'lumot..."
+            placeholder="Film yoki anime mazmuni haqida to'liq ma'lumot..."
             className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
           />
         </div>
 
+        {/* SECTION 7: FEATURED CHECKBOX */}
+        <div className="flex items-center gap-2 text-xs text-white/80 bg-white/5 p-3 rounded-xl border border-white/10">
+          <input
+            type="checkbox"
+            id="featured_check"
+            checked={featured}
+            onChange={(e) => setFeatured(e.target.checked)}
+            className="h-4 w-4 rounded border-white/20 bg-white/10 accent-cyan-400 cursor-pointer"
+          />
+          <label htmlFor="featured_check" className="cursor-pointer select-none">
+            ⭐ <b>Bosh sahifa va Tavsiyalarga chiqarish</b> (Top Banner & Featured blokida ko&apos;rinadi)
+          </label>
+        </div>
+
+        {/* SUBMIT BUTTON */}
         <button
           type="submit"
           disabled={loading}
-          className={`w-full rounded-xl py-3 text-xs font-extrabold flex items-center justify-center gap-2 active:scale-95 transition shadow-lg ${
+          className={`w-full rounded-xl py-3.5 text-xs font-extrabold flex items-center justify-center gap-2 active:scale-95 transition shadow-lg ${
             mode === "anime"
               ? "bg-purple-500 hover:bg-purple-400 text-white shadow-purple-500/20"
               : "bg-cyan-400 hover:bg-cyan-300 text-slate-950 shadow-cyan-400/20"
@@ -684,10 +937,10 @@ export function SmartMediaAdder() {
         >
           <Plus className="h-4 w-4" />
           {loading
-            ? "Bazaga qo'shilmoqda..."
+            ? "Neon Ma'lumotlar Bazasiga saqlanmoqda..."
             : mode === "anime"
-            ? "🎭 Yangi Animeni Bazaga Saqlash"
-            : "🎬 Yangi Filmni Bazaga Saqlash"}
+            ? "🎭 Yangi Animeni Neon Bazasiga Saqlash"
+            : "🎬 Yangi Filmni Neon Bazasiga Saqlash"}
         </button>
       </form>
     </div>

@@ -6,7 +6,8 @@ import {
   getManualReceipts,
   getBroadcasts,
 } from "@/lib/admin-store"
-import { getAllMedia } from "@/lib/anime-store"
+import { getAllMedia, setAllMedia } from "@/lib/anime-store"
+import { fetchAllMediaFromNeon } from "@/lib/db/media-db"
 import {
   createMediaAction,
   deleteMediaAction,
@@ -66,7 +67,12 @@ export default async function TelegramAdminAppPage({
 
   const adminProfile = getAdminProfileDetails(session?.identifier)
 
-  const allMedia = getAllMedia()
+  let allMedia = await fetchAllMediaFromNeon()
+  if (allMedia.length > 0) {
+    setAllMedia(allMedia)
+  } else {
+    allMedia = getAllMedia()
+  }
   const admins = getAdmins()
   const sponsors = getSponsorChannels()
   const cards = getPaymentCards()

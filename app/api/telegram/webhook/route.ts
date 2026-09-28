@@ -726,8 +726,11 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
         rating: draft.rating,
         duration: draft.duration,
         ageRating: "16+",
+        country: "AQSH",
+        language: "O'zbekcha (Dublyaj)",
         genres: draft.genres,
-        poster: "/images/poster-1.png",
+        poster: draft.photoFileId ? `/api/telegram/file-proxy?fileId=${draft.photoFileId}` : "/images/poster-1.png",
+        posterFileId: draft.photoFileId,
         backdrop: "/images/hero-1.png",
         synopsis: draft.synopsis,
         director: "OneMedia Studio",
@@ -735,6 +738,7 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
         quality: draft.quality,
         featured: true,
         totalEpisodes: mediaType === "anime" ? (draft.totalEpisodes || 12) : 1,
+        telegramStorageId: draft.fileId,
         episodes: [
           {
             id: `${draftId}-ep1`,
@@ -743,6 +747,7 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
             duration: draft.duration,
             quality: draft.quality === "4K" ? "4K" : "1080p",
             telegramFileId: draft.fileId,
+            posterFileId: draft.photoFileId,
           },
         ],
       })

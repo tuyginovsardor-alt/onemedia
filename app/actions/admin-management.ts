@@ -14,11 +14,13 @@ import {
   type AdminUser,
 } from "@/lib/admin-store"
 import { addMediaItem, deleteMediaItem } from "@/lib/anime-store"
+import { saveMediaItemToNeon, removeMediaItemFromNeon } from "@/lib/db/media-db"
 import { sendTelegramMessage } from "@/lib/telegram"
 
 // 1. Film / Anime actions
 export async function createMediaAction(formData: FormData) {
   const title = String(formData.get("title") || "").trim()
+  const originalTitle = String(formData.get("originalTitle") || "").trim() || undefined
   const type = String(formData.get("type") || "movie") as "movie" | "anime" | "series"
   const year = parseInt(String(formData.get("year") || "2025"), 10)
   const rating = parseFloat(String(formData.get("rating") || "8.5"))
@@ -26,16 +28,24 @@ export async function createMediaAction(formData: FormData) {
   const genresStr = String(formData.get("genres") || "Jangari").trim()
   const genres = genresStr.split(",").map((g) => g.trim()).filter(Boolean)
   const quality = (String(formData.get("quality") || "4K") as "4K" | "FHD" | "HD")
+  const ageRating = String(formData.get("ageRating") || "16+").trim()
+  const country = String(formData.get("country") || "AQSH").trim()
+  const language = String(formData.get("language") || "O'zbekcha (Dublyaj)").trim()
   const synopsis = String(formData.get("synopsis") || "").trim()
   const director = String(formData.get("director") || "OneMedia Studio").trim()
-  const poster = String(formData.get("poster") || "/images/poster-1.png").trim()
-  const backdrop = String(formData.get("backdrop") || "/images/hero-1.png").trim()
+  const castStr = String(formData.get("cast") || "OneMedia Ijodiy Guruhi").trim()
+  const cast = castStr.split(",").map((c) => c.trim()).filter(Boolean)
+  const poster = String(formData.get("poster") || "").trim()
+  const posterFileId = String(formData.get("posterFileId") || "").trim()
+  const backdrop = String(formData.get("backdrop") || "").trim()
+  const trailerUrl = String(formData.get("trailerUrl") || "").trim()
   const telegramFileId = String(formData.get("telegramFileId") || "").trim()
   const totalEpisodes = parseInt(String(formData.get("totalEpisodes") || "1"), 10)
   const episodesJson = String(formData.get("episodesJson") || "").trim()
   const season = parseInt(String(formData.get("season") || "1"), 10)
-  const animeStatus = String(formData.get("animeStatus") || "ongoing") as "ongoing" | "completed"
-  const dubbingStudio = String(formData.get("dubbingStudio") || "AnimeDub").trim()
+  const animeStatus = String(formData.get("animeStatus") || "completed") as "ongoing" | "completed"
+  const dubbingStudio = String(formData.get("dubbingStudio") || "OneMedia Dublyaj").trim()
+  const featured = formData.get("featured") === "true" || formData.get("featured") === "on"
 
   if (!title) throw new Error("Film yoki anime nomi kiritilishi shart")
 
@@ -62,6 +72,7 @@ export async function createMediaAction(formData: FormData) {
           duration: ep.duration || "24 daq",
           quality: quality === "4K" ? ("4K" as const) : ("1080p" as const),
           telegramFileId: ep.fileId || undefined,
+          posterFileId: ep.posterFileId || undefined,
         })
       }
     } else {
@@ -73,6 +84,7 @@ export async function createMediaAction(formData: FormData) {
           duration: "24 daq",
           quality: quality === "4K" ? ("4K" as const) : ("1080p" as const),
           telegramFileId: i === 1 ? telegramFileId : undefined,
+          posterFileId: posterFileId || undefined,
         })
       }
     }
@@ -84,40 +96,52 @@ export async function createMediaAction(formData: FormData) {
       duration,
       quality: quality === "4K" ? ("4K" as const) : ("1080p" as const),
       telegramFileId: telegramFileId || undefined,
+      posterFileId: posterFileId || undefined,
     })
   }
 
-  addMediaItem({
+  const savedMedia = await saveMediaItemToNeon({
     title,
+    originalTitle,
     type,
     year,
     rating,
     duration,
-    ageRating: "16+",
+    ageRating,
+    country,
+    language,
     genres: genres.length > 0 ? genres : ["Jangari"],
-    poster: poster || "/images/poster-1.png",
+    poster: poster || (posterFileId ? `/api/telegram/file-proxy?fileId=${posterFileId}` : "/images/poster-1.png"),
+    posterFileId: posterFileId || undefined,
     backdrop: backdrop || "/images/hero-1.png",
+    trailerUrl: trailerUrl || undefined,
     synopsis: synopsis || `${title} — OneMedia platformasida 4K sifatda.`,
     director,
-    cast: ["OneMedia Ijodiy Guruhi"],
+    cast: cast.length > 0 ? cast : ["OneMedia Ijodiy Guruhi"],
     quality,
-    featured: true,
+    featured,
     totalEpisodes: type === "anime" ? (episodes.length || totalEpisodes) : 1,
     season: type === "anime" ? season : undefined,
     animeStatus: type === "anime" ? animeStatus : undefined,
-    dubbingStudio: type === "anime" ? dubbingStudio : undefined,
+    dubbingStudio,
+    telegramStorageId: telegramFileId || undefined,
     episodes,
   })
 
+  addMediaItem(savedMedia)
+
   revalidatePath("/catalog")
+  revalidatePath("/")
   revalidatePath("/admin")
   revalidatePath("/admin/tg")
   return { success: true }
 }
 
 export async function deleteMediaAction(id: string) {
+  await removeMediaItemFromNeon(id)
   deleteMediaItem(id)
   revalidatePath("/catalog")
+  revalidatePath("/")
   revalidatePath("/admin")
   revalidatePath("/admin/tg")
   return { success: true }

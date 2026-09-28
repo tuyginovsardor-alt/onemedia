@@ -10,12 +10,48 @@ import { cn } from "@/lib/utils"
 export function Hero({ movies }: { movies: Movie[] }) {
   const [index, setIndex] = useState(0)
 
-  const next = useCallback(() => setIndex((i) => (i + 1) % movies.length), [movies.length])
+  const next = useCallback(() => {
+    if (movies.length === 0) return
+    setIndex((i) => (i + 1) % movies.length)
+  }, [movies.length])
 
   useEffect(() => {
+    if (movies.length === 0) return
     const t = setInterval(next, 6000)
     return () => clearInterval(t)
-  }, [next])
+  }, [next, movies.length])
+
+  if (movies.length === 0) {
+    return (
+      <section className="relative h-[65vh] min-h-[480px] w-full overflow-hidden bg-gradient-to-b from-cyan-950/40 via-background to-background flex items-center">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-8 space-y-4">
+          <span className="inline-flex items-center gap-2 rounded-full bg-cyan-400/15 px-3 py-1 text-xs font-semibold text-cyan-400 ring-1 ring-cyan-400/40">
+            🎬 OneMedia Streaming Platformasi
+          </span>
+          <h1 className="font-display text-4xl font-black text-white md:text-6xl max-w-2xl">
+            Eng sara kinolar va animelar olami
+          </h1>
+          <p className="max-w-xl text-sm md:text-base text-white/70">
+            4K sifat, professional dublyaj va Telegram orqali cheksiz oqimli tomosha.
+          </p>
+          <div className="flex items-center gap-3 pt-2">
+            <Link
+              href="/catalog"
+              className="rounded-full bg-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 hover:bg-cyan-300 transition"
+            >
+              Katalogga o&apos;tish
+            </Link>
+            <Link
+              href="/admin"
+              className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-bold text-white hover:bg-white/10 transition"
+            >
+              👑 Admin Panel
+            </Link>
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="relative h-[82vh] min-h-[560px] w-full overflow-hidden">

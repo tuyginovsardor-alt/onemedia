@@ -139,3 +139,18 @@ export async function editTelegramMessageText(chatId: number | string, messageId
     return sendTelegramMessage(chatId, text, options)
   }
 }
+
+export async function getTelegramFileUrl(fileId: string): Promise<string | null> {
+  try {
+    const token = getTelegramBotToken()
+    if (!token || !fileId) return null
+    const res = await telegramApi<{ file_path?: string }>("getFile", { file_id: fileId })
+    if (res?.file_path) {
+      return `https://api.telegram.org/file/bot${token}/${res.file_path}`
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+

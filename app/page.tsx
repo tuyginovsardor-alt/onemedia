@@ -91,12 +91,34 @@ export default function HomePage() {
 
       {/* Recently added grid */}
       <section className="mx-auto max-w-7xl space-y-6 px-4 pb-4 md:px-8">
-        <h2 className="font-display text-2xl font-bold text-white">Yaqinda qo'shilgan</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {movies.slice(0, 12).map((movie) => (
-            <MovieCardWrapper key={movie.id} id={movie.id} />
-          ))}
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-2xl font-bold text-white">Yaqinda qo&apos;shilgan</h2>
+          <Link href="/catalog" className="text-xs font-semibold text-cyan-400 hover:underline">
+            Barchasini ko&apos;rish →
+          </Link>
         </div>
+        {movies.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center space-y-3">
+            <p className="text-sm font-semibold text-white/70">
+              Hozircha Neon bazasiga yangi kinolar qo&apos;shilmoqda.
+            </p>
+            <p className="text-xs text-white/40">
+              Admin panelga o&apos;tib, birinchi filmni yoki animeni bir lahzada yuklashingiz mumkin!
+            </p>
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 transition"
+            >
+              👑 Film / Anime qo&apos;shish
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {movies.slice(0, 12).map((movie) => (
+              <MovieCardWrapper key={movie.id} id={movie.id} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )

@@ -7,9 +7,7 @@ import { MovieCard } from "@/components/movie-card"
 import { getMovie, movies } from "@/lib/movies"
 import { getMediaById, getAllMedia } from "@/lib/anime-store"
 
-export function generateStaticParams() {
-  return getAllMedia().map((m) => ({ id: m.id }))
-}
+export const dynamic = "force-dynamic"
 
 export default async function FilmPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

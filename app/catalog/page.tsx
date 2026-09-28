@@ -81,7 +81,20 @@ export default function CatalogPage() {
       </div>
 
       {list.length === 0 && (
-        <p className="py-20 text-center text-muted-foreground">Bu janrda film topilmadi.</p>
+        <div className="my-16 rounded-2xl border border-white/10 bg-white/[0.03] p-12 text-center space-y-3">
+          <p className="text-base font-semibold text-white/80">Katalogda filmlar topilmadi</p>
+          <p className="text-xs text-white/50 max-w-sm mx-auto">
+            Neon bazasiga yangi kinolar yoki animelar yuklangach, barchasi shu yerda avtomatik ko&apos;rinadi.
+          </p>
+          <div className="pt-2">
+            <a
+              href="/admin"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 transition"
+            >
+              👑 Film / Anime qo&apos;shish
+            </a>
+          </div>
+        </div>
       )}
     </div>
   )
