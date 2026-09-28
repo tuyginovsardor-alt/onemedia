@@ -64,20 +64,26 @@ export function getMoviesList(): MediaItem[] {
   return globalMediaStore.filter((m) => m.type === "movie" || m.type === "series")
 }
 
-export function addMediaItem(item: Omit<MediaItem, "id" | "addedAt">): MediaItem {
+export function addMediaItem(item: MediaItem | Omit<MediaItem, "id" | "addedAt">): MediaItem {
+  const existingId = (item as MediaItem).id
   const slug = item.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "")
-  const id = `${slug || "media"}-${Date.now().toString(36).slice(-5)}`
+  const id = existingId || `${slug || "media"}-${Date.now().toString(36).slice(-5)}`
 
   const newItem: MediaItem = {
     ...item,
     id,
-    addedAt: new Date().toISOString(),
+    addedAt: (item as MediaItem).addedAt || new Date().toISOString(),
   }
 
-  globalMediaStore.unshift(newItem)
+  const existingIndex = globalMediaStore.findIndex((m) => m.id === id)
+  if (existingIndex !== -1) {
+    globalMediaStore[existingIndex] = newItem
+  } else {
+    globalMediaStore.unshift(newItem)
+  }
   return newItem
 }
 

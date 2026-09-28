@@ -141,15 +141,15 @@ export function parseTelegramMediaPost(text: string, fileId?: string, photoFileI
   }
 
   // 9. File ID extraction from text if not provided directly
-  let detectedVideoFileId = fileId
+  let detectedVideoFileId = fileId && !fileId.startsWith("AgAC") ? fileId : undefined
   if (!detectedVideoFileId) {
-    const fidMatch = clean.match(/\b(BAAC[A-Za-z0-9_-]{20,})\b/)
+    const fidMatch = clean.match(/\b(BAAC[A-Za-z0-9_-]{20,}|BAAD[A-Za-z0-9_-]{20,}|CQAC[A-Za-z0-9_-]{20,})\b/)
     if (fidMatch) {
       detectedVideoFileId = fidMatch[1]
     }
   }
 
-  let detectedPhotoFileId = photoFileId
+  let detectedPhotoFileId = photoFileId || (fileId && fileId.startsWith("AgAC") ? fileId : undefined)
   if (!detectedPhotoFileId) {
     const pidMatch = clean.match(/\b(AgAC[A-Za-z0-9_-]{20,})\b/)
     if (pidMatch) {
