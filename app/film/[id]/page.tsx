@@ -27,12 +27,15 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
     .filter((m) => m.id !== movie.id && m.genres.some((g) => movie.genres.includes(g)))
     .slice(0, 6)
 
+  const posterImg = movie.poster || (movie.posterFileId ? `/api/telegram/file-proxy?fileId=${movie.posterFileId}` : "/images/poster-1.png")
+  const backdropImg = movie.backdrop && !movie.backdrop.includes("hero-1.png") ? movie.backdrop : posterImg
+
   return (
     <div className="relative">
-      {/* Backdrop */}
-      <div className="absolute inset-x-0 top-0 h-[45vh] md:h-[60vh] pointer-events-none">
-        <Image src={movie.backdrop || "/placeholder.svg"} alt="" fill className="object-cover" priority />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#070913]/50 via-[#070913]/85 to-[#070913]" />
+      {/* Hero Banner Backdrop */}
+      <div className="absolute inset-x-0 top-0 h-[50vh] md:h-[65vh] pointer-events-none overflow-hidden">
+        <Image src={backdropImg} alt={movie.title} fill className="object-cover scale-105 blur-sm opacity-40" priority />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#070913]/30 via-[#070913]/80 to-[#070913]" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 pt-4 md:px-8 md:pt-12 pb-36">
@@ -40,7 +43,7 @@ export default async function FilmPage({ params }: { params: Promise<{ id: strin
           {/* Poster */}
           <div className="mx-auto w-44 sm:w-56 shrink-0 lg:mx-0 lg:w-full">
             <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl ring-1 ring-white/15 shadow-2xl glow-blue">
-              <Image src={movie.poster || "/placeholder.svg"} alt={`${movie.title} afishasi`} fill className="object-cover" />
+              <Image src={posterImg} alt={`${movie.title} afishasi`} fill className="object-cover" />
             </div>
           </div>
 

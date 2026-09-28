@@ -63,16 +63,15 @@ export async function GET(request: Request) {
       }
     }
     const ep = media?.episodes.find((e) => e.episodeNumber === episodeNumber) || media?.episodes[0]
-    if (ep) {
-      if (ep.telegramFileId && token) {
-        const fileInfo = await resolveTelegramFilePath(ep.telegramFileId)
-        if (fileInfo) {
-          targetUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.filePath}`
-        }
+    const vidFileId = ep?.telegramFileId || media?.telegramStorageId
+    if (vidFileId && token) {
+      const fileInfo = await resolveTelegramFilePath(vidFileId)
+      if (fileInfo) {
+        targetUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.filePath}`
       }
-      if (!targetUrl && ep.videoUrl) {
-        targetUrl = ep.videoUrl
-      }
+    }
+    if (!targetUrl && ep?.videoUrl) {
+      targetUrl = ep.videoUrl
     }
   }
 

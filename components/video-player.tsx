@@ -35,6 +35,7 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [playing, setPlaying] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.9)
@@ -89,6 +90,7 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
     } catch {
       // ignore
     }
+    setHasStarted(true)
     setIsUnlocked(true)
     setShowAdModal(false)
     if (videoRef.current) {
@@ -140,6 +142,7 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
 
   const togglePlay = () => {
     if (!videoRef.current) return
+    setHasStarted(true)
     if (playing) {
       videoRef.current.pause()
       setPlaying(false)
@@ -254,10 +257,16 @@ export function VideoPlayer({ poster, title, mediaId = "default-video", videoUrl
         />
 
         {/* Center Poster Overlay if not started */}
-        {!playing && currentTime === 0 && poster && (
-          <div className="absolute inset-0 z-10 pointer-events-none">
-            <Image src={poster} alt={title} fill className="object-cover opacity-80" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        {!hasStarted && !playing && currentTime === 0 && poster && (
+          <div
+            onClick={togglePlay}
+            className="absolute inset-0 z-10 cursor-pointer group flex items-center justify-center transition"
+          >
+            <Image src={poster} alt={title} fill className="object-cover opacity-80 group-hover:scale-105 transition duration-500" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+            <div className="relative z-20 flex h-20 w-20 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-2xl shadow-cyan-400/50 group-hover:scale-110 transition duration-300">
+              <Play className="h-10 w-10 fill-current translate-x-0.5" />
+            </div>
           </div>
         )}
 
