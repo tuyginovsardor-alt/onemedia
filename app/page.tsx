@@ -1,3 +1,4 @@
+import { Send } from 'lucide-react'
 import { Hero } from "@/components/hero"
 import { TopTenSection, CategoryRow, RecommendationBanner } from "@/components/streaming-sections"
 import { getAllMedia } from "@/lib/anime-store"

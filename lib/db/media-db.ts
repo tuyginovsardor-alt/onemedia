@@ -1,4 +1,4 @@
-import { db } from "./index"
+import { db, hasDatabaseUrl } from "./index"
 import { media, mediaEpisode, type DbMedia, type DbMediaEpisode } from "./schema"
 import { ensureDatabaseTables } from "./init"
 import { eq, desc } from "drizzle-orm"
@@ -65,6 +65,7 @@ function mapDbMediaToMediaItem(row: DbMedia, episodes: DbMediaEpisode[] = []): M
 }
 
 export async function fetchAllMediaFromNeon(): Promise<MediaItem[]> {
+  if (!hasDatabaseUrl) return []
   try {
     await ensureDatabaseTables()
     const rows = await db.select().from(media).orderBy(desc(media.createdAt))
@@ -86,6 +87,7 @@ export async function fetchAllMediaFromNeon(): Promise<MediaItem[]> {
 }
 
 export async function fetchMediaByIdFromNeon(id: string): Promise<MediaItem | null> {
+  if (!hasDatabaseUrl) return null
   try {
     await ensureDatabaseTables()
     const rows = await db.select().from(media).where(eq(media.id, id))

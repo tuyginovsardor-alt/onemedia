@@ -1,9 +1,9 @@
-import { pool } from "./index"
+import { pool, hasDatabaseUrl } from "./index"
 
 let initialized = false
 
 export async function ensureDatabaseTables() {
-  if (initialized) return
+  if (initialized || !hasDatabaseUrl) return
   try {
     const client = await pool.connect()
     try {
