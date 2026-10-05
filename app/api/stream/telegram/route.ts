@@ -63,15 +63,19 @@ export async function GET(request: Request) {
       }
     }
     const ep = media?.episodes.find((e) => e.episodeNumber === episodeNumber) || media?.episodes[0]
+    
+    if (ep?.videoUrl) {
+      targetUrl = ep.videoUrl
+    } else if (media?.trailerUrl) {
+      targetUrl = media.trailerUrl
+    }
+
     const vidFileId = ep?.telegramFileId || media?.telegramStorageId
-    if (vidFileId && token) {
+    if (!targetUrl && vidFileId && token) {
       const fileInfo = await resolveTelegramFilePath(vidFileId)
       if (fileInfo) {
         targetUrl = `https://api.telegram.org/file/bot${token}/${fileInfo.filePath}`
       }
-    }
-    if (!targetUrl && ep?.videoUrl) {
-      targetUrl = ep.videoUrl
     }
   }
 
@@ -83,55 +87,11 @@ export async function GET(request: Request) {
     }
   }
 
-  // 3. Fallback demo video with full Range / seek support
+  // 3. Fallback high-speed streaming CDN video
   if (!targetUrl) {
     targetUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
   }
 
-  // Handle Range requests for video seeking (e.g. at minute 60)
-  const rangeHeader = request.headers.get("range")
-  const headers: Record<string, string> = {}
-  if (rangeHeader) {
-    headers["range"] = rangeHeader
-  }
-
-  try {
-    const videoResponse = await fetch(targetUrl, {
-      headers,
-      cache: "no-store",
-    })
-
-    if (!videoResponse.ok && videoResponse.status !== 206) {
-      // If Telegram link expired, invalidate cache and retry once
-      if (fileId) {
-        telegramFileCache.delete(fileId)
-      }
-      return NextResponse.redirect(targetUrl)
-    }
-
-    const responseHeaders = new Headers()
-    responseHeaders.set("Content-Type", videoResponse.headers.get("Content-Type") || "video/mp4")
-    responseHeaders.set("Accept-Ranges", "bytes")
-
-    const contentRange = videoResponse.headers.get("Content-Range")
-    if (contentRange) {
-      responseHeaders.set("Content-Range", contentRange)
-    }
-
-    const contentLength = videoResponse.headers.get("Content-Length")
-    if (contentLength) {
-      responseHeaders.set("Content-Length", contentLength)
-    }
-
-    responseHeaders.set("Cache-Control", "no-cache, no-store, must-revalidate")
-
-    return new Response(videoResponse.body, {
-      status: videoResponse.status,
-      statusText: videoResponse.statusText,
-      headers: responseHeaders,
-    })
-  } catch (error) {
-    // Graceful fallback: redirect directly to the URL
-    return NextResponse.redirect(targetUrl)
-  }
+  // Directly redirect with 307 so browser video engine manages HTTP Range, buffering, and seeking natively
+  return NextResponse.redirect(targetUrl, 307)
 }

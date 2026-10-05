@@ -296,6 +296,9 @@ export function FilmDetailsView({
             poster={backdropImg}
             title={movie.title}
             mediaId={movie.id}
+            videoUrl={movie.episodes[activeEpisode - 1]?.videoUrl || movie.trailerUrl}
+            currentEpisode={activeEpisode}
+            onEpisodeChange={(ep) => setActiveEpisode(ep)}
             episodes={movie.episodes}
           />
         </section>
