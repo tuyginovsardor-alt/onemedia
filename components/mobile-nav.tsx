@@ -2,45 +2,59 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, LayoutGrid, Sparkles, Clapperboard, User } from 'lucide-react'
+import { Home, Search, Layers, Tv, User } from 'lucide-react'
 import { cn } from "@/lib/utils"
 
-const items = [
-  { href: "/", label: "Bosh", icon: Home },
-  { href: "/catalog", label: "Katalog", icon: LayoutGrid },
-  { href: "/search", label: "AI", icon: Sparkles },
-  { href: "/shorts", label: "Shorts", icon: Clapperboard },
+const navItems = [
+  { href: "/", label: "Asosiy", icon: Home },
+  { href: "/search", label: "Qidiruv", icon: Search },
+  { href: "/catalog", label: "To'plam", icon: Layers },
+  { href: "/shorts", label: "TV", icon: Tv },
   { href: "/profile", label: "Profil", icon: User },
 ]
 
 export function MobileNav() {
   const pathname = usePathname()
+
+  // Hide bottom nav on admin pages to keep desktop layout clean
+  if (pathname.startsWith("/admin")) {
+    return null
+  }
+
   return (
-    <nav className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl glass-strong px-2 py-2 ring-1 ring-white/10 md:hidden">
-      {items.map((item) => {
-        const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
-        const Icon = item.icon
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex flex-col items-center gap-1 rounded-xl px-4 py-1.5 text-[10px] font-medium transition-colors",
-              active ? "text-white" : "text-muted-foreground",
-            )}
-          >
-            <span
+    <nav className="fixed bottom-0 inset-x-0 z-50 bg-[#090b14]/95 backdrop-blur-xl border-t border-white/10 pb-safe pt-1.5 px-3">
+      <div className="mx-auto flex max-w-lg items-center justify-around">
+        {navItems.map((item) => {
+          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-xl transition-colors",
-                active && "bg-primary text-primary-foreground glow-blue",
+                "flex flex-col items-center gap-1 py-1 px-3 transition-transform active:scale-90",
+                active ? "text-[#ef4444]" : "text-white/50 hover:text-white/80"
               )}
             >
-              <Icon className="h-[18px] w-[18px]" />
-            </span>
-            {item.label}
-          </Link>
-        )
-      })}
+              <div className={cn(
+                "relative flex h-8 w-8 items-center justify-center rounded-xl transition-all",
+                active && "text-[#ef4444]"
+              )}>
+                <Icon className={cn("h-5 w-5", active ? "stroke-[2.5]" : "stroke-[1.8]")} />
+                {active && (
+                  <span className="absolute -bottom-1 h-1 w-1 rounded-full bg-[#ef4444]" />
+                )}
+              </div>
+              <span className={cn(
+                "text-[10px] font-medium tracking-tight",
+                active ? "font-bold text-[#ef4444]" : "text-white/60"
+              )}>
+                {item.label}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
     </nav>
   )
 }

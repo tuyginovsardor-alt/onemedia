@@ -115,18 +115,10 @@ let globalSponsors: SponsorChannel[] = [
   {
     id: "sp-1",
     title: "OneMedia Rasmiy Kanali",
-    username: "@onemedia_kino",
-    inviteLink: "https://t.me/OneMediaHdBot",
+    username: "@OneMediaRasmiy",
+    inviteLink: "https://t.me/OneMediaRasmiy",
     required: true,
     order: 1,
-  },
-  {
-    id: "sp-2",
-    title: "Premyera Kinolar & Anime 4K",
-    username: "@onemedia_hd",
-    inviteLink: "https://t.me/OneMediaHdBot",
-    required: true,
-    order: 2,
   },
 ]
 
@@ -230,33 +222,26 @@ export type SubscriptionPlan = {
 
 let globalPlans: SubscriptionPlan[] = [
   {
-    id: "plan-1d",
-    name: "1 kunlik VIP Pass",
-    durationDays: 1,
-    amountUzs: 3000,
-    features: ["1 kunlik cheksiz 4K tomosha", "Reklamalarsiz pleyer", "Barcha kinolar & animelar", "Telegram bot va saytda faol"],
-  },
-  {
-    id: "plan-1w",
-    name: "1 haftalik VIP Express",
+    id: "plan-7d",
+    name: "7 Kunlik (Haftalik)",
     durationDays: 7,
     amountUzs: 9000,
-    features: ["7 kunlik cheksiz kirish", "4K Ultra HD video", "Reklamalarsiz tezkor pleyer", "Barcha premyera seriallar"],
+    features: ["7 kunlik cheksiz 4K tomosha", "Barcha filmlar & seriallar", "Reklamasiz tezkor pleyer", "Telegram va saytda faol"],
   },
   {
     id: "plan-1m",
-    name: "1 oylik VIP Premium",
+    name: "1 Oylik (Premium)",
     durationDays: 30,
     amountUzs: 25000,
     popular: true,
-    features: ["30 kunlik to'liq VIP obuna", "Anime & Kino premyeralar", "Kanal & guruh talabisiz", "VIP nishoni va 24/7 yordam"],
+    features: ["30 kunlik to'liq VIP kirish", "Barcha premyeralar va seriallar", "Botda 4K video yuklab olish", "24/7 Premium yordam"],
   },
   {
-    id: "plan-1y",
-    name: "1 yillik MAX Cheksiz",
-    durationDays: 365,
-    amountUzs: 120000,
-    features: ["Barcha 4K kinolar & Animelar", "Eksklyuziv seriallar", "Kanal & guruh talabisiz", "VIP nishoni va yopiq guruh"],
+    id: "plan-3m",
+    name: "3 Oylik (Max / Kvartal)",
+    durationDays: 90,
+    amountUzs: 60000,
+    features: ["90 kunlik cheksiz kirish (3 oy)", "Barcha 4K filmlar, seriallar, shorts", "Eksklyuziv ovozlashtirishlar", "VIP maqom va tejamkor narx"],
   },
 ]
 

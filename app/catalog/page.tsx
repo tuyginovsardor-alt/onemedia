@@ -1,17 +1,62 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
-import { SlidersHorizontal } from 'lucide-react'
+import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { Layers, Film, Sparkles, Star, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { MovieCard } from "@/components/movie-card"
 import { movies as staticMovies, genres } from "@/lib/movies"
 import { cn } from "@/lib/utils"
-import { HilltopAdBanner } from "@/components/hilltop-ad-banner"
 
-type Sort = "reyting" | "yil" | "nom"
+const collectionsData = [
+  {
+    id: "nafasni-bogadigan",
+    title: "Nafasni bo'g'adigan",
+    subtitle: "Triller, Jangari va Kuchli sarguzashtlar",
+    posters: ["/images/poster-1.png", "/images/hero-1.png", "/images/poster-1.png"],
+    genreFilter: "Jangari",
+  },
+  {
+    id: "kult-klassika",
+    title: "Kult klassika",
+    subtitle: "Dunyo kinosining durdonalari",
+    posters: ["/images/hero-1.png", "/images/poster-1.png", "/images/hero-1.png"],
+    genreFilter: "Tarixiy",
+  },
+  {
+    id: "aqlni-shoshiradigan",
+    title: "Aqlni shoshiradigan",
+    subtitle: "Syujeti kutilmagan burilishlarga boy",
+    posters: ["/images/poster-1.png", "/images/hero-1.png", "/images/poster-1.png"],
+    genreFilter: "Fantastika",
+  },
+  {
+    id: "koz-yosh-dramalari",
+    title: "Ko'z yosh dramalari",
+    subtitle: "Eng ta'sirli va chuqur melodramalar",
+    posters: ["/images/hero-1.png", "/images/poster-1.png", "/images/hero-1.png"],
+    genreFilter: "Drama",
+  },
+  {
+    id: "kayfiyat-kotaruvchi",
+    title: "Kayfiyat ko'taruvchi",
+    subtitle: "Kulgi va pozitiv his-tuyg'ular",
+    posters: ["/images/poster-1.png", "/images/hero-1.png", "/images/poster-1.png"],
+    genreFilter: "Komediya",
+  },
+  {
+    id: "tomoshabinlar-tanlovi",
+    title: "Tomoshabinlar tanlovi",
+    subtitle: "Eng ko'p ko'rilgan va sevimlilar",
+    posters: ["/images/hero-1.png", "/images/poster-1.png", "/images/hero-1.png"],
+    genreFilter: "Anime",
+  },
+]
 
-export default function CatalogPage() {
-  const [genre, setGenre] = useState("Barchasi")
-  const [sort, setSort] = useState<Sort>("reyting")
+export default function CollectionsAndCatalogPage() {
+  const [activeTab, setActiveTab] = useState<"toplam" | "janrlar">("toplam")
+  const [selectedGenre, setSelectedGenre] = useState<string>("Barchasi")
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null)
   const [allMedia, setAllMedia] = useState<any[]>(staticMovies)
 
   useEffect(() => {
@@ -19,7 +64,6 @@ export default function CatalogPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.media) && data.media.length > 0) {
-          // Combine Neon items with static items avoiding duplicates
           const neonIds = new Set(data.media.map((m: any) => m.id))
           const filteredStatic = staticMovies.filter((m) => !neonIds.has(m.id))
           setAllMedia([...data.media, ...filteredStatic])
@@ -28,90 +72,162 @@ export default function CatalogPage() {
       .catch(() => null)
   }, [])
 
-  const list = useMemo(() => {
-    const filtered =
-      genre === "Barchasi" ? allMedia : allMedia.filter((m) => m.genres?.includes(genre))
-    return [...filtered].sort((a, b) => {
-      if (sort === "reyting") return (b.rating || 0) - (a.rating || 0)
-      if (sort === "yil") return (b.year || 0) - (a.year || 0)
-      return (a.title || "").localeCompare(b.title || "")
-    })
-  }, [genre, sort, allMedia])
+  const filteredMovies = useMemo(() => {
+    if (selectedCollection) {
+      const coll = collectionsData.find((c) => c.id === selectedCollection)
+      if (coll) {
+        return allMedia.filter((m) => m.genres?.includes(coll.genreFilter) || m.collectionCategory === coll.title)
+      }
+    }
+    if (selectedGenre !== "Barchasi") {
+      return allMedia.filter((m) => m.genres?.includes(selectedGenre))
+    }
+    return allMedia
+  }, [allMedia, selectedGenre, selectedCollection])
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pt-8 md:px-8 md:pt-12">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-3xl font-black text-white md:text-4xl">Katalog</h1>
-        <p className="text-sm text-muted-foreground">
-          {list.length} ta film va serial • janr bo'yicha saralang
-        </p>
-      </div>
-
-      {/* Genres */}
-      <div className="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-2">
-        {genres.map((g) => (
+    <div className="min-h-screen bg-[#070913] text-white px-4 pt-4 pb-28 max-w-7xl mx-auto space-y-6">
+      {/* Top Segmented Controls: [To'plam | Janrlar] (Screenshot photo_14) */}
+      <div className="flex items-center justify-center pt-2">
+        <div className="flex w-full max-w-md items-center rounded-2xl bg-[#161a29] p-1.5 border border-white/10 shadow-lg">
           <button
-            key={g}
-            onClick={() => setGenre(g)}
+            onClick={() => {
+              setActiveTab("toplam")
+              setSelectedCollection(null)
+            }}
             className={cn(
-              "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all",
-              genre === g
-                ? "bg-primary text-primary-foreground glow-blue"
-                : "glass text-muted-foreground ring-1 ring-white/10 hover:text-white",
+              "flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all",
+              activeTab === "toplam"
+                ? "bg-[#252b42] text-white shadow-md"
+                : "text-white/60 hover:text-white"
             )}
           >
-            {g}
+            To'plam
           </button>
-        ))}
-      </div>
-
-      {/* Sort */}
-      <div className="mt-4 flex items-center gap-2">
-        <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Saralash:</span>
-        {(
-          [
-            { key: "reyting", label: "Reyting" },
-            { key: "yil", label: "Yil" },
-            { key: "nom", label: "Nomi" },
-          ] as { key: Sort; label: string }[]
-        ).map((s) => (
           <button
-            key={s.key}
-            onClick={() => setSort(s.key)}
+            onClick={() => {
+              setActiveTab("janrlar")
+              setSelectedCollection(null)
+            }}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              sort === s.key ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white",
+              "flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all",
+              activeTab === "janrlar"
+                ? "bg-[#252b42] text-white shadow-md"
+                : "text-white/60 hover:text-white"
             )}
           >
-            {s.label}
+            Janrlar
           </button>
-        ))}
+        </div>
       </div>
 
-      {/* Ad Banner */}
-      <HilltopAdBanner />
+      {/* Selected Collection View Banner */}
+      {selectedCollection && (
+        <div className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-red-950/40 via-card to-card p-4 border border-red-500/30">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-[#ef4444]">Tanlangan to'plam:</p>
+            <h2 className="text-lg font-black text-white">
+              {collectionsData.find((c) => c.id === selectedCollection)?.title}
+            </h2>
+          </div>
+          <button
+            onClick={() => setSelectedCollection(null)}
+            className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/20 transition"
+          >
+            Barchasini ko'rsatish ✕
+          </button>
+        </div>
+      )}
 
-      {/* Grid */}
-      <div className="mt-8 grid grid-cols-2 gap-4 pb-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {list.map((movie) => (
-          <MovieCard key={movie.id} movie={movie} />
-        ))}
-      </div>
-
-      {list.length === 0 && (
-        <div className="my-16 rounded-2xl border border-white/10 bg-white/[0.03] p-12 text-center space-y-3">
-          <p className="text-base font-semibold text-white/80">Katalogda filmlar topilmadi</p>
-          <p className="text-xs text-white/50 max-w-sm mx-auto">
-            Neon bazasiga yangi kinolar yoki animelar yuklangach, barchasi shu yerda avtomatik ko&apos;rinadi.
-          </p>
-          <div className="pt-2">
-            <a
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-300 transition"
+      {/* TAB 1: TO'PLAM (Collage Stack Grid - Screenshot photo_14) */}
+      {activeTab === "toplam" && !selectedCollection && (
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 pt-2">
+          {collectionsData.map((col, idx) => (
+            <div
+              key={col.id}
+              onClick={() => setSelectedCollection(col.id)}
+              className="group cursor-pointer flex flex-col items-center space-y-3"
             >
-              Bosh sahifaga qaytish
-            </a>
+              {/* Stacked Fan Posters Effect */}
+              <div className="relative h-44 sm:h-52 w-full flex items-center justify-center pt-2">
+                {/* Layer 1 (Left fan) */}
+                <div className="absolute aspect-[2/3] w-24 sm:w-28 -rotate-12 translate-x-[-18px] opacity-70 rounded-xl overflow-hidden border border-white/20 shadow-md transition-transform duration-300 group-hover:-rotate-16 group-hover:scale-105">
+                  <Image
+                    src={col.posters[0]}
+                    alt={col.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Layer 2 (Right fan) */}
+                <div className="absolute aspect-[2/3] w-24 sm:w-28 rotate-12 translate-x-[18px] opacity-70 rounded-xl overflow-hidden border border-white/20 shadow-md transition-transform duration-300 group-hover:rotate-16 group-hover:scale-105">
+                  <Image
+                    src={col.posters[1]}
+                    alt={col.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Layer 3 (Center Top Poster) */}
+                <div className="relative z-10 aspect-[2/3] w-28 sm:w-32 rotate-1 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-0">
+                  <Image
+                    src={col.posters[2]}
+                    alt={col.title}
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                </div>
+              </div>
+
+              {/* Title Tag Pill (Screenshot photo_14) */}
+              <div className="w-full text-center">
+                <div className="inline-block w-full rounded-2xl bg-[#1e2338] px-3 py-2 border border-white/10 shadow group-hover:bg-[#ef4444] transition-colors">
+                  <p className="font-bold text-xs sm:text-sm text-white tracking-tight line-clamp-1">
+                    {col.title}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TAB 2: JANRLAR (Genre Pills and Filter View) */}
+      {activeTab === "janrlar" && (
+        <div className="space-y-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {genres.map((g) => (
+              <button
+                key={g}
+                onClick={() => setSelectedGenre(g)}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all",
+                  selectedGenre === g
+                    ? "bg-[#ef4444] text-white shadow-lg shadow-red-500/30"
+                    : "bg-[#161a29] text-white/60 border border-white/10 hover:text-white"
+                )}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Movies Grid for Selected Category/Genre */}
+      {(activeTab === "janrlar" || selectedCollection) && (
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between text-xs text-white/50">
+            <span>Jami: <b>{filteredMovies.length} ta</b> film va serial</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {filteredMovies.map((movie) => (
+              <MovieCard key={movie.id} movie={movie} />
+            ))}
           </div>
         </div>
       )}
