@@ -40,7 +40,11 @@ export function Hero({ movies }: { movies: Movie[] }) {
             )}
           >
             <Image
-              src={movie.backdrop || movie.poster || "/placeholder.svg"}
+              src={
+                movie.backdrop && !movie.backdrop.includes("hero-1.png")
+                  ? movie.backdrop
+                  : movie.poster || "/images/poster-1.png"
+              }
               alt={movie.title}
               fill
               priority={i === 0}

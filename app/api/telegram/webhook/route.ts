@@ -541,7 +541,13 @@ async function sendMovieCard(chatId: number | string, movieId: string, siteUrl: 
 }
 
 // Directly send Telegram Video file into user's Telegram chat
-async function handlePlayVideoInTelegram(chatId: number | string, movieId: string, siteUrl: string) {
+async function handlePlayVideoInTelegram(
+  chatId: number | string,
+  movieId: string,
+  siteUrl: string,
+  episodeNumber = 1,
+  passToken?: string
+) {
   let movie = getMediaById(movieId) || getMovie(movieId)
   if (!movie) {
     const neonItem = await fetchMediaByIdFromNeon(movieId)
@@ -555,21 +561,53 @@ async function handlePlayVideoInTelegram(chatId: number | string, movieId: strin
     return
   }
 
-  const videoFileId = movie.episodes?.[0]?.telegramFileId || movie.telegramStorageId
+  const ep = movie.episodes?.find((e) => e.episodeNumber === episodeNumber) || movie.episodes?.[0]
+  const videoFileId = ep?.telegramFileId || movie.telegramStorageId || movie.episodes?.[0]?.telegramFileId
+  const epTitle = ep?.title || `${episodeNumber}-qism`
 
   if (videoFileId && isTelegramConfigured()) {
     try {
-      await sendTelegramMessage(chatId, `⏳ <b>«${movie.title}»</b> video fayli yuborilmoqda...`)
+      const passNotice = passToken
+        ? `\n🎟️ <b>Maxsus 4K Pass Token tasdiqlandi!</b>`
+        : ""
+
+      await sendTelegramMessage(
+        chatId,
+        `⏳ <b>«${movie.title}»</b> (${epTitle}) video fayli yuborilmoqda...${passNotice}`
+      )
+
+      const epButtons = []
+      if (movie.episodes && movie.episodes.length > 1) {
+        const epNavRow = []
+        if (episodeNumber > 1) {
+          epNavRow.push({
+            text: `◀️ ${episodeNumber - 1}-qism`,
+            callback_data: `play_ep:${movie.id}:${episodeNumber - 1}`,
+          })
+        }
+        if (episodeNumber < movie.episodes.length) {
+          epNavRow.push({
+            text: `${episodeNumber + 1}-qism ▶️`,
+            callback_data: `play_ep:${movie.id}:${episodeNumber + 1}`,
+          })
+        }
+        if (epNavRow.length > 0) {
+          epButtons.push(epNavRow)
+        }
+      }
+
+      epButtons.push([
+        { text: "🌐 Saytda/WebApp'da ochish", web_app: { url: `${siteUrl}/film/${movie.id}` } },
+        { text: "⬅️ Film sahifasi", callback_data: `movie:${movie.id}` },
+      ])
+
       await telegramApi("sendVideo", {
         chat_id: chatId,
         video: videoFileId,
-        caption: `🎬 <b>${movie.title}</b> (${movie.year})\n\n⭐ Reyting: ${movie.rating.toFixed(1)}/10 | 🎞️ Sifat: ${movie.quality} Ultra HD\n\n🍿 <i>OneMedia — Sevimli kinolaringiz bir joyda!</i>`,
+        caption: `🎬 <b>${movie.title}</b> (${epTitle})\n\n⭐ Reyting: ${movie.rating.toFixed(1)}/10 | 🎞️ Sifat: ${movie.quality} Ultra HD\n🎭 Janr: ${movie.genres.join(", ")}\n\n🍿 <i>OneMedia — Sevimli kinolaringiz bir joyda!</i>`,
         parse_mode: "HTML",
         reply_markup: {
-          inline_keyboard: [
-            [{ text: "🌐 Saytda/WebApp'da ochish", web_app: { url: `${siteUrl}/film/${movie.id}` } }],
-            [{ text: "⬅️ Film ma'lumotlariga qaytish", callback_data: `movie:${movie.id}` }],
-          ],
+          inline_keyboard: epButtons,
         },
       })
       return
@@ -579,14 +617,18 @@ async function handlePlayVideoInTelegram(chatId: number | string, movieId: strin
   }
 
   // Fallback if no video file ID or sendVideo failed
-  await sendTelegramMessage(chatId, `🎬 <b>«${movie.title}»</b> filmini saytimizdagi 4K pleyerda tomosha qiling:`, {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "▶️ WebApp Pleyerda Ko'rish", web_app: { url: `${siteUrl}/film/${movie.id}` } }],
-        [{ text: "⬅️ Ortga", callback_data: `movie:${movie.id}` }],
-      ],
-    },
-  })
+  await sendTelegramMessage(
+    chatId,
+    `🎬 <b>«${movie.title}»</b> (${epTitle}) filmini saytimizdagi 4K pleyerda tomosha qiling:`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "▶️ WebApp Pleyerda Ko'rish", web_app: { url: `${siteUrl}/film/${movie.id}` } }],
+          [{ text: "⬅️ Ortga", callback_data: `movie:${movie.id}` }],
+        ],
+      },
+    }
+  )
 }
 
 // Search movies by query
@@ -699,6 +741,22 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       const movieId = data.replace("play_tg:", "")
       await answerTelegramCallbackQuery(cb.id, "📹 Video tayyorlanmoqda...")
       await handlePlayVideoInTelegram(chatId, movieId, siteUrl)
+      return
+    }
+
+    if (data.startsWith("play_tg:")) {
+      const movieId = data.replace("play_tg:", "")
+      await answerTelegramCallbackQuery(cb.id, "Video fayl yuborilmoqda...")
+      await handlePlayVideoInTelegram(chatId, movieId, siteUrl, 1)
+      return
+    }
+
+    if (data.startsWith("play_ep:")) {
+      const parts = data.replace("play_ep:", "").split(":")
+      const movieId = parts[0]
+      const epNum = parseInt(parts[1] || "1", 10)
+      await answerTelegramCallbackQuery(cb.id, `${epNum}-qism yuborilmoqda...`)
+      await handlePlayVideoInTelegram(chatId, movieId, siteUrl, epNum)
       return
     }
 
@@ -1105,7 +1163,7 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
         genres: draft.genres,
         poster: draft.photoFileId ? `/api/telegram/file-proxy?fileId=${draft.photoFileId}` : "/images/poster-1.png",
         posterFileId: draft.photoFileId,
-        backdrop: "/images/hero-1.png",
+        backdrop: draft.photoFileId ? `/api/telegram/file-proxy?fileId=${draft.photoFileId}` : "/images/poster-1.png",
         synopsis: draft.synopsis,
         director: mediaType === "anime" ? "Anime Studio" : "OneMedia Studio",
         cast: ["OneMedia Ijodiy Guruhi"],
@@ -1552,9 +1610,20 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       await sendAdminPanel(chatId, firstName, siteUrl)
       return
     }
+    if (payload.startsWith("watch_")) {
+      const parts = payload.replace("watch_", "").split("_")
+      const movieId = parts[0]
+      const epNum = parseInt(parts[1] || "1", 10) || 1
+      const passToken = parts[2] || ""
+      await handlePlayVideoInTelegram(chatId, movieId, siteUrl, epNum, passToken)
+      return
+    }
+
     if (payload.startsWith("play_")) {
-      const movieId = payload.replace("play_", "").trim()
-      await handlePlayVideoInTelegram(chatId, movieId, siteUrl)
+      const parts = payload.replace("play_", "").split("_")
+      const movieId = parts[0]
+      const epNum = parseInt(parts[1] || "1", 10) || 1
+      await handlePlayVideoInTelegram(chatId, movieId, siteUrl, epNum)
       return
     }
 

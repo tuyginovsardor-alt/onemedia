@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import {
   Play,
   Pause,
@@ -18,7 +19,12 @@ import {
   AlertCircle,
   SkipForward,
   Server,
-  Film,
+  Crown,
+  Tv,
+  CheckCircle2,
+  X,
+  Clock,
+  ExternalLink,
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
 
@@ -79,6 +85,8 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const [botUsername, setBotUsername] = useState("OneMediaRasmiy")
+  const [isVipUser, setIsVipUser] = useState(false)
   const [activeEp, setActiveEp] = useState(currentEpisode)
   const [playing, setPlaying] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
@@ -93,15 +101,46 @@ export function VideoPlayer({
   const [hasError, setHasError] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Watch in Telegram 4K Token Pass Modal State
+  const [showTelegramPassModal, setShowTelegramPassModal] = useState(false)
+  const [adCountdown, setAdCountdown] = useState(5)
+  const [adCompleted, setAdCompleted] = useState(false)
+  const [passToken, setPassToken] = useState("")
+
   const [savedResumeTime, setSavedResumeTime] = useState<number | null>(null)
   const [showResumeBanner, setShowResumeBanner] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Keep internal episode synced with prop
+  // Dynamic Bot Username and User Session discovery
+  useEffect(() => {
+    fetch("/api/telegram/bot-info")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.username) {
+          setBotUsername(data.username)
+        }
+      })
+      .catch(() => null)
+
+    fetch("/api/user/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user?.isVip || data?.user?.role === "admin") {
+          setIsVipUser(true)
+        }
+      })
+      .catch(() => null)
+  }, [])
+
+  // Sync internal episode with prop
   useEffect(() => {
     setActiveEp(currentEpisode)
   }, [currentEpisode])
+
+  // Filter out astronaut placeholder
+  const safePoster =
+    poster && !poster.includes("hero-1.png") ? poster : "/images/poster-1.png"
 
   // Find active episode data
   const currentEpData = episodes?.find((e) => e.episodeNumber === activeEp) || episodes?.[0]
@@ -154,6 +193,40 @@ export function VideoPlayer({
     }, 2500)
     return () => clearInterval(timer)
   }, [playing, currentTime, mediaId, activeEp])
+
+  // Countdown timer for 4K Pass modal
+  useEffect(() => {
+    if (!showTelegramPassModal || isVipUser || adCompleted) return
+    if (adCountdown <= 0) {
+      setAdCompleted(true)
+      const token = "PASS_" + Math.random().toString(36).substring(2, 9).toUpperCase()
+      setPassToken(token)
+      return
+    }
+    const timer = setTimeout(() => {
+      setAdCountdown((prev) => prev - 1)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [showTelegramPassModal, adCountdown, isVipUser, adCompleted])
+
+  const openTelegram4KWatch = () => {
+    if (isVipUser) {
+      const vipUrl = `https://t.me/${botUsername}?start=watch_${mediaId}_${activeEp}_vip`
+      window.open(vipUrl, "_blank")
+      return
+    }
+    // For free users, open interactive 4K Pass modal
+    setAdCountdown(5)
+    setAdCompleted(false)
+    setShowTelegramPassModal(true)
+  }
+
+  const handleLaunchTelegramWithPass = () => {
+    const finalToken = passToken || "PASS_FREE"
+    const targetUrl = `https://t.me/${botUsername}?start=watch_${mediaId}_${activeEp}_${finalToken}`
+    setShowTelegramPassModal(false)
+    window.open(targetUrl, "_blank")
+  }
 
   const formatTime = (secs: number) => {
     if (isNaN(secs) || secs < 0) return "00:00"
@@ -302,17 +375,16 @@ export function VideoPlayer({
       <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-[#121524] p-3 border border-white/10 shadow-lg">
         <div className="flex items-center gap-2">
           <span className="flex h-2.5 w-2.5 rounded-full bg-[#ef4444] animate-pulse" />
-          <span className="text-xs font-bold text-white">Tomosha qilish rejimi:</span>
+          <span className="text-xs font-bold text-white">Tomosha qilish usuli:</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={`https://t.me/OneMediaRasmiy?start=play_${mediaId}`}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={openTelegram4KWatch}
             className="flex items-center gap-1.5 rounded-xl bg-[#ef4444] px-3.5 py-2 text-xs font-black text-white hover:bg-[#dc2626] shadow-lg shadow-red-500/20 active:scale-95 transition"
           >
-            <Send className="h-3.5 w-3.5" /> 📹 Telegram Botda (4K)
-          </a>
+            <Send className="h-3.5 w-3.5" /> 📹 Telegram Botda 4K Ko&apos;rish
+          </button>
           <button
             type="button"
             onClick={togglePlay}
@@ -342,7 +414,7 @@ export function VideoPlayer({
             <video
               ref={videoRef}
               src={videoSrc}
-              poster={poster}
+              poster={safePoster}
               preload="metadata"
               onTimeUpdate={() => {
                 if (videoRef.current) setCurrentTime(videoRef.current.currentTime)
@@ -375,9 +447,9 @@ export function VideoPlayer({
                 onClick={togglePlay}
                 className="absolute inset-0 z-10 cursor-pointer group flex items-center justify-center transition"
               >
-                {poster ? (
+                {safePoster ? (
                   <Image
-                    src={poster}
+                    src={safePoster}
                     alt={title}
                     fill
                     className="object-cover opacity-80 group-hover:scale-105 transition duration-500"
@@ -399,7 +471,7 @@ export function VideoPlayer({
                 <div className="space-y-1 max-w-sm">
                   <h4 className="text-sm font-bold text-white">Video oqimi yuklanmadi</h4>
                   <p className="text-xs text-white/60">
-                    Fayl hajmi katta bo&apos;lishi yoki server band bo&apos;lishi mumkin. Zaxira serverni tanlang yoki Telegramda oching:
+                    Fayl hajmi katta bo&apos;lishi yoki server band bo&apos;lishi mumkin. Zaxira serverni tanlang yoki Telegram bot orqali 4K sifatda tomosha qiling:
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
@@ -410,14 +482,13 @@ export function VideoPlayer({
                   >
                     <RefreshCw className="h-3.5 w-3.5" /> ⚡ Zaxira Serverga O&apos;tish
                   </button>
-                  <a
-                    href={`https://t.me/OneMediaRasmiy?start=play_${mediaId}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={openTelegram4KWatch}
                     className="rounded-xl bg-white/10 border border-white/20 px-4 py-2 text-xs font-bold text-white hover:bg-white/20 transition flex items-center gap-1.5"
                   >
-                    <Send className="h-3.5 w-3.5" /> 📹 Telegramda 4K Ochish
-                  </a>
+                    <Send className="h-3.5 w-3.5" /> 📹 Telegram Botda 4K Ochish
+                  </button>
                 </div>
               </div>
             )}
@@ -623,6 +694,94 @@ export function VideoPlayer({
           </>
         )}
       </div>
+
+      {/* MODAL: 4K Video Pass & Ad Reward for Telegram Bot */}
+      {showTelegramPassModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-[#161a29] p-5 border border-white/15 shadow-2xl space-y-4 text-center relative">
+            <button
+              type="button"
+              onClick={() => setShowTelegramPassModal(false)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white p-1"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-red-500/20 text-[#ef4444] border border-red-500/30 mx-auto">
+              <Send className="h-6 w-6" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="font-display text-base font-black text-white">
+                Telegram Botda 4K Ochish
+              </h3>
+              <p className="text-xs text-white/60">
+                {title} ({activeEp}-qism) original 4K formatda to&apos;g&apos;ridan-to&apos;g&apos;ri Telegram chatingizga yuboriladi.
+              </p>
+            </div>
+
+            {/* Ad Countdown / Token Reward Box */}
+            <div className="rounded-2xl bg-white/5 p-4 border border-white/10 space-y-2.5">
+              {!adCompleted ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-white/70">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-amber-400" /> Tezkor homiy reklamasi:
+                    </span>
+                    <span className="font-mono font-black text-amber-400">{adCountdown} soniya</span>
+                  </div>
+                  <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-amber-500 to-[#ef4444] h-full transition-all duration-1000"
+                      style={{ width: `${((5 - adCountdown) / 5) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-white/40 italic">
+                    «OneMedia Premium — 4K kinolar va barcha yangi fasllar birinchi bo&apos;lib bizda!»
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 text-emerald-400">
+                  <div className="flex items-center justify-center gap-1.5 text-xs font-black">
+                    <CheckCircle2 className="h-4 w-4" /> 4K Pass Token Faollashdi!
+                  </div>
+                  <p className="text-[11px] font-mono text-white/80 bg-emerald-500/10 py-1 px-2 rounded-lg border border-emerald-500/30">
+                    Token: <b>{passToken}</b>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-1">
+              {adCompleted ? (
+                <button
+                  type="button"
+                  onClick={handleLaunchTelegramWithPass}
+                  className="w-full rounded-2xl bg-[#ef4444] py-3 text-xs font-black text-white hover:bg-[#dc2626] shadow-xl shadow-red-500/30 active:scale-95 transition flex items-center justify-center gap-2"
+                >
+                  <Send className="h-4 w-4" /> Botga o&apos;tish va 4K faylni olish ▶
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full rounded-2xl bg-white/10 py-3 text-xs font-bold text-white/40 cursor-not-allowed"
+                >
+                  Pass tayyorlanmoqda ({adCountdown}s)...
+                </button>
+              )}
+
+              <Link
+                href="/payment"
+                onClick={() => setShowTelegramPassModal(false)}
+                className="w-full rounded-2xl bg-amber-500/10 border border-amber-500/30 py-2.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition flex items-center justify-center gap-1.5"
+              >
+                <Crown className="h-3.5 w-3.5 text-amber-400" /> VIP sotib olish (Reklamasiz darhol)
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -67,13 +67,29 @@ export type TelegramBotUser = {
   supports_inline_queries?: boolean
 }
 
+let cachedBotUser: TelegramBotUser | null = null
+let cachedBotUserExpiresAt = 0
+
 export async function getBotMe(): Promise<TelegramBotUser | null> {
   if (!isTelegramConfigured()) return null
+  if (cachedBotUser && Date.now() < cachedBotUserExpiresAt) {
+    return cachedBotUser
+  }
   try {
-    return await telegramApi<TelegramBotUser>("getMe")
+    const user = await telegramApi<TelegramBotUser>("getMe")
+    if (user) {
+      cachedBotUser = user
+      cachedBotUserExpiresAt = Date.now() + 60 * 60 * 1000 // 1 hour
+    }
+    return user
   } catch {
     return null
   }
+}
+
+export async function getTelegramBotUsername(): Promise<string> {
+  const me = await getBotMe()
+  return me?.username || process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "OneMediaRasmiy"
 }
 
 export async function sendTelegramMessage(chatId: number | string, text: string, options?: {

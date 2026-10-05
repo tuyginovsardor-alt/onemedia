@@ -113,7 +113,7 @@ export async function createMediaAction(formData: FormData) {
     genres: genres.length > 0 ? genres : ["Jangari"],
     poster: poster || (posterFileId ? `/api/telegram/file-proxy?fileId=${posterFileId}` : "/images/poster-1.png"),
     posterFileId: posterFileId || undefined,
-    backdrop: backdrop || "/images/hero-1.png",
+    backdrop: backdrop || poster || (posterFileId ? `/api/telegram/file-proxy?fileId=${posterFileId}` : "/images/poster-1.png"),
     trailerUrl: trailerUrl || undefined,
     synopsis: synopsis || `${title} — OneMedia platformasida 4K sifatda.`,
     director,

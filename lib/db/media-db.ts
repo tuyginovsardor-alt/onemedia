@@ -46,7 +46,7 @@ function mapDbMediaToMediaItem(row: DbMedia, episodes: DbMediaEpisode[] = []): M
     genres: genresList,
     poster: row.posterUrl || (row.posterFileId ? `/api/telegram/file-proxy?fileId=${row.posterFileId}` : "/images/poster-1.png"),
     posterFileId: row.posterFileId || undefined,
-    backdrop: row.backdropUrl || row.posterUrl || (row.posterFileId ? `/api/telegram/file-proxy?fileId=${row.posterFileId}` : "/images/hero-1.png"),
+    backdrop: row.backdropUrl || row.posterUrl || (row.posterFileId ? `/api/telegram/file-proxy?fileId=${row.posterFileId}` : "/images/poster-1.png"),
     trailerUrl: row.trailerUrl || undefined,
     synopsis: row.synopsis || `${row.title} — OneMedia platformasida 4K sifatda.`,
     director: row.director || "OneMedia Studio",

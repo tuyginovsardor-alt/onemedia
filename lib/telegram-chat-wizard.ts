@@ -133,7 +133,7 @@ export async function finalizeWizard(chatId: number): Promise<MediaItem | null> 
     genres: d.genres && d.genres.length > 0 ? d.genres : ["Anime", "Jangari"],
     poster: d.posterUrl || (d.posterFileId ? `/api/telegram/file-proxy?fileId=${d.posterFileId}` : "/images/poster-1.png"),
     posterFileId: d.posterFileId,
-    backdrop: "/images/hero-1.png",
+    backdrop: d.posterUrl || (d.posterFileId ? `/api/telegram/file-proxy?fileId=${d.posterFileId}` : "/images/poster-1.png"),
     synopsis: d.synopsis || `${title} — OneMedia platformasida 4K sifatda tomosha qiling.`,
     director: mediaType === "anime" ? "Anime Studio" : "OneMedia Studio",
     cast: ["OneMedia Ijodiy Guruhi"],
