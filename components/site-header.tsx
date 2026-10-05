@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Search, Bell, User, Crown, LogOut, ChevronDown } from 'lucide-react'
+import { Search, Bell, User, Crown, LogOut, ChevronDown, Send } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/logo"
 import { authClient } from "@/lib/auth-client"
@@ -109,13 +109,23 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <a
+            href="https://t.me/OneMediaRasmiy"
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ef4444]/15 border border-[#ef4444]/30 text-[#ef4444] hover:bg-[#ef4444]/25 transition shadow-sm"
+            aria-label="Telegram Kanal"
+          >
+            <Send className="h-4 w-4" />
+          </a>
+
           <Link
             href="/search"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
             aria-label="Qidiruv"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </Link>
 
           <button

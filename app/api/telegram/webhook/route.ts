@@ -209,25 +209,41 @@ async function sendMainMenu(chatId: number | string, firstName = "do‘st", site
   })
 }
 
+// User Tariff Checkout State Map
+type UserTariffState = {
+  planId: string
+  planName: string
+  amountUzs: number
+  startedAt: number
+}
+
+const tariffStateMap = new Map<string, UserTariffState>()
+
+function setTariffState(chatId: string | number, state: UserTariffState) {
+  tariffStateMap.set(String(chatId), state)
+}
+
+function getTariffState(chatId: string | number): UserTariffState | undefined {
+  return tariffStateMap.get(String(chatId))
+}
+
+function clearTariffState(chatId: string | number) {
+  tariffStateMap.delete(String(chatId))
+}
+
 // Send Tariff Menu in Bot Chat
 async function sendTariffMenu(chatId: number | string) {
   const text = [
     `💎 <b>OneMedia VIP Obuna Tariflari:</b>`,
     ``,
-    `1️⃣ ⚡ <b>1 Kunlik VIP Pass:</b> Saytda <code>1 ta reklama ko'rish</code> orqali bepul ochiladi!`,
+    `Kerakli VIP tarifni tanlang va bot orqali tezkor to'lov chekini yuboring:`,
+    ``,
+    `1️⃣ ⚡ <b>1 Kunlik VIP Pass:</b> Saytda <code>1 ta reklama ko'rish</code> orqali bepul!`,
     `2️⃣ 🚀 <b>1 Haftalik VIP Express:</b> <code>9,000 UZS</code>`,
     `3️⃣ ⭐ <b>1 Oylik VIP Premium:</b> <code>25,000 UZS</code> (Eng ommabop)`,
     `4️⃣ 👑 <b>1 Yillik MAX Cheksiz:</b> <code>120,000 UZS</code>`,
     ``,
-    `💳 <b>To'lov qilish tartibi:</b>`,
-    `1. Quyidagi kartaga to'lovni o'tkazing.`,
-    `2. To'lov cheki (skrinshot)ni shu bot chatiga yuboring.`,
-    `3. Chek darhol adminga (@sardor) yuboriladi va VIP obunangiz avtomatik tasdiqlanadi!`,
-    ``,
-    `💳 <b>To'lov rekvizitlari:</b>`,
-    `• <b>Kapitalbank (Uzcard):</b> <code>8600 4912 3456 7890</code>`,
-    `• <b>TBC Bank (Humo):</b> <code>9860 1201 9876 5432</code>`,
-    `• <b>Qabul qiluvchi:</b> SARDOR TUYGINOV`,
+    `✨ <i>VIP afzalliklari: Barcha 4K filmlar, animelar, 0 ta reklama, Telegram botdan to'g'ridan-to'g'ri 4K video faylni qabul qilish!</i>`,
   ].join("\n")
 
   await sendTelegramMessage(chatId, text, {
@@ -820,19 +836,62 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       if (planCode === "1d") {
         await sendTelegramMessage(
           chatId,
-          `⚡ <b>1 Kunlik VIP Pass</b> saytimizda <code>1 ta reklama ko'rish</code> orqali bepul taqdim etiladi!\n\nSaytga o'ting va sevgan filmingizni tanlab, reklamani 5s ko'rib bepul tomosha qiling:\nhttps://onemedia-mocha.vercel.app`,
+          `⚡ <b>1 Kunlik VIP Pass</b> saytimizda <code>1 ta reklama ko'rish</code> orqali bepul taqdim etiladi!\n\nSaytga o'ting va sevgan filmingizni tanlab, reklamani 5s ko'rib bepul tomosha qiling:\n${siteUrl}`,
           {
             reply_markup: {
-              inline_keyboard: [[{ text: "🎬 Saytda tomosha qilish", url: "https://onemedia-mocha.vercel.app" }]],
+              inline_keyboard: [
+                [{ text: "🎬 Saytda tomosha qilish", web_app: { url: siteUrl } }],
+                [{ text: "⬅️ Boshqa tariflar", callback_data: "menu:tariffs" }],
+              ],
             },
           }
         )
+      } else if (planCode === "cancel") {
+        clearTariffState(chatId)
+        await sendTelegramMessage(chatId, "❌ To'lov bekor qilindi.", {
+          reply_markup: {
+            inline_keyboard: [[{ text: "💎 VIP Tariflar menyusi", callback_data: "menu:tariffs" }]],
+          },
+        })
       } else {
-        const planName = planCode === "1w" ? "1 Haftalik Express (9,000 UZS)" : planCode === "1y" ? "1 Yillik MAX (120,000 UZS)" : "1 Oylik VIP Premium (25,000 UZS)"
-        await sendTelegramMessage(
-          chatId,
-          `💳 <b>«${planName}» uchun to'lov ko'rsatmasi:</b>\n\n1. Quyidagi Uzcard/Humo kartaga to'lov o'tkazing:\n💳 <b>8600 4912 3456 7890</b> (Uzcard)\n💳 <b>9860 1201 9876 5432</b> (Humo)\n👤 SARDOR TUYGINOV\n\n2. To'lov amalga oshirilgach, <b>chek skrinshotini (rasmini) shu yerga tashlang!</b>\n\nChek darhol adminga (@sardor) tekshirish uchun yuboriladi.`
-        )
+        const planName =
+          planCode === "1w"
+            ? "1 Haftalik VIP Express"
+            : planCode === "1y"
+            ? "1 Yillik MAX Cheksiz"
+            : "1 Oylik VIP Premium"
+        const amountUzs = planCode === "1w" ? 9000 : planCode === "1y" ? 120000 : 25000
+
+        setTariffState(chatId, {
+          planId: `plan-${planCode}`,
+          planName,
+          amountUzs,
+          startedAt: Date.now(),
+        })
+
+        const invoiceText = [
+          `💎 <b>«${planName}» uchun to'lov ma'lumotlari:</b>`,
+          ``,
+          `💰 To'lov summasi: <b>${amountUzs.toLocaleString()} UZS</b>`,
+          ``,
+          `💳 <b>To'lov rekvizitlari:</b>`,
+          `• <b>Uzcard (Kapitalbank):</b> <code>8600 4912 3456 7890</code>`,
+          `• <b>Humo (TBC Bank):</b> <code>9860 1201 9876 5432</code>`,
+          `• <b>Qabul qiluvchi:</b> SARDOR TUYGINOV`,
+          ``,
+          `📸 <b>To'lovni amalga oshirib, chek skrinshotini (rasmini) shu yerga tashlang:</b>`,
+          ``,
+          `<i>Chek yuborilgan zahoti Admin panelga tushadi va VIP obunangiz faollashadi!</i>`,
+        ].join("\n")
+
+        await sendTelegramMessage(chatId, invoiceText, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "❌ Bekor qilish", callback_data: "tariff:cancel" }],
+              [{ text: "⬅️ Tariflar ro'yxati", callback_data: "menu:tariffs" }],
+            ],
+          },
+        })
       }
       return
     }
@@ -841,20 +900,31 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
       const parts = data.split(":")
       const receiptId = parts[1]
       const userChatId = parts[2]
-      await reviewReceipt(receiptId, "approved", "To'lovingiz tasdiqlandi!")
-      await answerTelegramCallbackQuery(cb.id, "✅ To'lov tasdiqlandi va foydalanuvchiga VIP berildi!", true)
+      const planId = parts[3] || "plan-1m"
+      const planName = planId === "plan-1w" ? "1 Haftalik VIP" : planId === "plan-1y" ? "1 Yillik VIP MAX" : "1 Oylik VIP Premium"
+      
+      await reviewReceipt(receiptId, "approved", "To'lov qabul qilindi va VIP berildi!")
+      await answerTelegramCallbackQuery(cb.id, `✅ ${userChatId} uchun to'lov tasdiqlandi!`, true)
 
       if (cb.message) {
         await editTelegramMessageText(
           chatId,
           cb.message.message_id,
-          `✅ <b>TO'LOV TASDIQLANDI!</b>\n\nFoydalanuvchi Chat ID: <code>${userChatId}</code>\nVIP Status: <b>30 kunlik VIP Premium faollashtirildi.</b>`
+          `✅ <b>TO'LOV TASDIQLANDI!</b>\n\n👤 Foydalanuvchi Chat ID: <code>${userChatId}</code>\n💎 Tarif: <b>${planName}</b>\n⭐ Status: <b>VIP obunasi muvaffaqiyatli yoqildi.</b>`
         )
       }
 
       await sendTelegramMessage(
         userChatId,
-        `🎉 <b>Tabriklaymiz! To'lovingiz tasdiqlandi.</b>\n\nSizga <b>1 oylik VIP Premium</b> obunasi muvaffaqiyatli yoqildi!\nEndi barcha film va animelarni 4K va Full HD sifatda, reklamalarsiz va cheksiz tomosha qilishingiz mumkin! 🚀`
+        `🎉 <b>Tabriklaymiz! To'lovingiz tasdiqlandi.</b>\n\nSizga <b>«${planName}»</b> VIP obunasi muvaffaqiyatli yoqildi!\nEndi barcha film va animelarni 4K sifatda, reklamalarsiz va cheksiz tomosha qilishingiz mumkin! 🚀`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎬 Saytda tomosha qilish", web_app: { url: siteUrl } }],
+              [{ text: "🔥 Mashhur kinolar", callback_data: "menu:trending" }],
+            ],
+          },
+        }
       ).catch(() => null)
       return
     }
@@ -876,7 +946,14 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
 
       await sendTelegramMessage(
         userChatId,
-        `⚠️ <b>To'lovingiz rad etildi.</b>\n\nIltimos, to'lov chekini qayta tekshirib yuboring yoki adminga (@sardor) murojaat qiling.`
+        `⚠️ <b>To'lov chekingiz rad etildi.</b>\n\nChek ma'lumotlari mos kelmadi yoki to'lov aniqlanmadi. Iltimos, to'lov chekini qayta tekshirib yuboring yoki adminga (@sardor) murojaat qiling.`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "💎 Qayta to'lov qilish", callback_data: "menu:tariffs" }],
+            ],
+          },
+        }
       ).catch(() => null)
       return
     }
@@ -1426,7 +1503,94 @@ async function handleUpdate(update: TelegramUpdate, siteUrl: string) {
     }
   }
 
-  // 6. Handle Forwarded Posts for Authorized Admins Only
+  // 6. Handle VIP Payment Receipts (Screenshots/Receipt Photos sent in Chat)
+  if (photoFileId || (docFileId && !senderIsAdmin)) {
+    const userTariffState = getTariffState(chatId)
+    const planName = userTariffState?.planName || "1 Oylik VIP Premium (25,000 UZS)"
+    const amountUzs = userTariffState?.amountUzs || 25000
+    const planId = userTariffState?.planId || "plan-1m"
+
+    const receipt = submitManualReceipt({
+      userId: String(chatId),
+      userDisplayName: `${firstName} ${message.from?.last_name || ""}`.trim(),
+      userTelegram: username ? `@${username}` : String(chatId),
+      userEmail: `${username || chatId}@telegram.onemedia.uz`,
+      planId,
+      planName,
+      amountUzs,
+      cardNumber: "8600 4912 3456 7890",
+      receiptImageUrl: photoFileId ? `/api/telegram/file-proxy?fileId=${photoFileId}` : "/images/poster-1.png",
+      transactionNote: rawText || "Telegram bot orqali yuborilgan to'lov cheki",
+    })
+
+    clearTariffState(chatId)
+
+    // Acknowledge to user in chat
+    await sendTelegramMessage(
+      chatId,
+      `✅ <b>To'lov chekingiz muvaffaqiyatli qabul qilindi!</b>\n\n` +
+        `🧾 <b>Chek ID:</b> <code>${receipt.id}</code>\n` +
+        `💎 <b>Tanlangan tarif:</b> ${receipt.planName}\n` +
+        `💰 <b>Summa:</b> ${receipt.amountUzs.toLocaleString()} UZS\n\n` +
+        `⏳ <i>Chek darhol Admin panelga va adminga yuborildi. Admin chekni tekshirib tasdiqlashi bilan darhol xabar olasiz va VIP obunangiz faollashadi!</i>`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🌐 Saytda tomosha qilish", web_app: { url: siteUrl } }],
+            [{ text: "🏠 Bosh menyu", callback_data: "menu:main" }],
+          ],
+        },
+      }
+    )
+
+    // Forward receipt directly to Admin(s) in Telegram with action buttons
+    const adminNotificationText = [
+      `🔔 <b>YANGI TO'LOV CHEKI QABUL QILINDI!</b>`,
+      ``,
+      `👤 <b>Foydalanuvchi:</b> ${firstName} ${message.from?.last_name || ""}`,
+      `🆔 <b>Chat ID:</b> <code>${chatId}</code>`,
+      ` Username: <b>${username ? `@${username}` : "Kiritilmagan"}</b>`,
+      `💎 <b>Tarif:</b> ${receipt.planName}`,
+      `💰 <b>Summa:</b> ${receipt.amountUzs.toLocaleString()} UZS`,
+      `🧾 <b>Chek ID:</b> <code>${receipt.id}</code>`,
+      ``,
+      `<i>Quyidagi tugmalar orqali to'lovni tasdiqlashingiz yoki rad etishingiz mumkin:</i>`,
+    ].join("\n")
+
+    const adminKeyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Tasdiqlash (VIP berish)", callback_data: `approve_receipt:${receipt.id}:${chatId}:${planId}` },
+          { text: "❌ Rad etish", callback_data: `reject_receipt:${receipt.id}:${chatId}` },
+        ],
+        [
+          { text: "👑 Sayt Admin Panelida Ko'rish", web_app: { url: `${siteUrl}/admin` } },
+        ],
+      ],
+    }
+
+    const adminIds = getAdmins()
+      .map((a) => a.identifier)
+      .filter((id) => /^\d+$/.test(id))
+
+    const targets = Array.from(new Set([...adminIds, "5770425712", process.env.ADMIN_CHAT_ID].filter(Boolean)))
+    for (const targetAdminId of targets) {
+      if (String(targetAdminId) !== String(chatId)) {
+        if (photoFileId) {
+          await sendTelegramPhoto(targetAdminId as string, photoFileId, adminNotificationText, {
+            reply_markup: adminKeyboard,
+          }).catch(() => null)
+        } else {
+          await sendTelegramMessage(targetAdminId as string, adminNotificationText, {
+            reply_markup: adminKeyboard,
+          }).catch(() => null)
+        }
+      }
+    }
+    return
+  }
+
+  // 7. Handle Forwarded Posts for Authorized Admins Only
   const senderIsAdmin = isAuthorizedAdmin(String(chatId)) || isAuthorizedAdmin(username)
 
   if (senderIsAdmin && (message.forward_from_chat || (rawText.length > 15 && (rawText.includes("🎬") || rawText.includes("BAACAg") || lower.includes("reyting") || lower.includes("janr"))))) {

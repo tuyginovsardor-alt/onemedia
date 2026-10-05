@@ -1,6 +1,3 @@
-import Link from "next/link"
-import Image from "next/image"
-import { Search, Send, Bell, Flame } from 'lucide-react'
 import { Hero } from "@/components/hero"
 import { TopTenSection, CategoryRow, RecommendationBanner } from "@/components/streaming-sections"
 import { getAllMedia } from "@/lib/anime-store"
@@ -23,37 +20,6 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#070913] text-white pb-24">
-      {/* Top Mobile/Desktop Header (Screenshot photo_13) */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-[#070913]/90 px-4 py-3 backdrop-blur-xl">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-[#ef4444] to-[#f43f5e] text-white font-black shadow-lg shadow-[#ef4444]/30">
-            ▶
-          </div>
-          <span className="font-display text-xl font-black uppercase tracking-wider text-white">
-            One<span className="text-[#ef4444]">Media</span>
-          </span>
-        </Link>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href="/search"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition"
-            aria-label="Qidiruv"
-          >
-            <Search className="h-4 w-4" />
-          </Link>
-          <a
-            href="https://t.me/OneMediaRasmiy"
-            target="_blank"
-            rel="noreferrer"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ef4444]/15 border border-[#ef4444]/30 text-[#ef4444] hover:bg-[#ef4444]/25 transition"
-            aria-label="Telegram Kanal"
-          >
-            <Send className="h-4 w-4" />
-          </a>
-        </div>
-      </header>
-
       {/* Main Hero Showcase */}
       <Hero movies={featured.length > 0 ? featured : allMedia.slice(0, 5)} />
 
